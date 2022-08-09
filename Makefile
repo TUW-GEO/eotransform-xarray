@@ -37,7 +37,7 @@ setup: .install.done
 	touch .install.test.done
 
 test: .install.test.done
-	pytest --verbose --color=yes --cov=eotransform --cov-report term-missing --doctest-modules
+	pytest --verbose --color=yes --cov=eotransform-xarray --cov-report term-missing --doctest-modules
 
 version:
 	echo "__version__ = \"$(shell python git_version_to_pep440.py $(shell git describe --always))\"" > src/eotransform_xarray/_version.py
