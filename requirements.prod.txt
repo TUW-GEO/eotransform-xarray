@@ -1,4 +1,5 @@
-eotransform
+eotransform>=1.1
 xarray
 rioxarray
+pandas
 numpy
