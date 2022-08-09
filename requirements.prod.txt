@@ -1,2 +1,4 @@
 eotransform
 xarray
+rioxarray
+numpy
