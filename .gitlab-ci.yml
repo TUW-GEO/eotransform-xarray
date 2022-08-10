@@ -5,7 +5,7 @@ stages:
 test:
   image: swamydev/geo-base:latest
   before_script:
-    - ci/add-pypi-indices.sh ${CI_JOB_TOKEN}
+    - ci/add-pypi-indices.sh ${READ_ACCESS_PYPI_EOTRANSFORM}
   script:
     - make test
   coverage: '/^TOTAL.+?(\d+\%)$/'
