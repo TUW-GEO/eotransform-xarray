@@ -7,30 +7,6 @@ from more_itertools import repeatfunc
 from eotransform_xarray.transformers import XArrayData
 
 
-def _find_valid_indices(patch_size, extent, ignore_extent):
-    ii, jj = np.meshgrid(range(0, extent[0] - patch_size), range(0, extent[1] - patch_size), indexing='ij')
-    mask = np.zeros_like(ii, dtype=bool)
-    left, top, right, bottom = ignore_extent
-    left = max(left - patch_size, 0)
-    top = max(top - patch_size, 0)
-    right = min(right, mask.shape[0])
-    bottom = min(bottom, mask.shape[1])
-    mask[left:right, top:bottom] = True
-    ii = np.ma.masked_array(ii, mask=mask).compressed()
-    jj = np.ma.masked_array(jj, mask=mask).compressed()
-    return np.stack([ii, jj])
-
-
-def _sample_patch_from(x: XArrayData, position: Tuple[int, int], patch_size):
-    top, left = position
-    bottom = top + patch_size
-    right = left + patch_size
-    patch = x.isel(y=slice(top, bottom), x=slice(left, right))
-    patch.attrs = patch.attrs.copy()
-    patch.attrs['sampled_extent'] = (top, left, bottom, right)
-    return patch
-
-
 class RandomSample(Transformer[XArrayData, Sequence[XArrayData]]):
     def __init__(self, n, ignore_extent=None):
         self._n = n
@@ -54,3 +30,27 @@ class RandomSample(Transformer[XArrayData, Sequence[XArrayData]]):
             return i, j
 
         return [_sample_patch_from(x, position, patch_size) for position in repeatfunc(_random_indices, self._n)]
+
+
+def _find_valid_indices(patch_size, extent, ignore_extent):
+    ii, jj = np.meshgrid(range(0, extent[0] - patch_size), range(0, extent[1] - patch_size), indexing='ij')
+    mask = np.zeros_like(ii, dtype=bool)
+    left, top, right, bottom = ignore_extent
+    left = max(left - patch_size, 0)
+    top = max(top - patch_size, 0)
+    right = min(right, mask.shape[0])
+    bottom = min(bottom, mask.shape[1])
+    mask[left:right, top:bottom] = True
+    ii = np.ma.masked_array(ii, mask=mask).compressed()
+    jj = np.ma.masked_array(jj, mask=mask).compressed()
+    return np.stack([ii, jj])
+
+
+def _sample_patch_from(x: XArrayData, position: Tuple[int, int], patch_size):
+    top, left = position
+    bottom = top + patch_size
+    right = left + patch_size
+    patch = x.isel(y=slice(top, bottom), x=slice(left, right))
+    patch.attrs = patch.attrs.copy()
+    patch.attrs['sampled_extent'] = (top, left, bottom, right)
+    return patch
