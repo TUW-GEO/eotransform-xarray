@@ -1,7 +1,9 @@
+from typing import Dict, Optional
+
 import numpy as np
 import pandas as pd
 from geopathfinder.naming_conventions.yeoda_naming import YeodaFilename
-from xarray import DataArray
+from xarray import DataArray, Dataset
 
 from eotransform_xarray.filesystem.gather import yeoda_naming_convention, gather_files
 
@@ -46,3 +48,7 @@ def make_files_dataset(index, **columns):
     df = pd.DataFrame(data=columns)
     df.set_index(index, inplace=True)
     return df
+
+
+def make_dataset(variables: Dict[str, DataArray], attrs: Optional[Dict] = None) -> Dataset:
+    return Dataset(variables, attrs=attrs)
