@@ -21,6 +21,10 @@ def assert_data_array_eq(actual, expected):
     assert actual.attrs == expected.attrs
 
 
+def assert_data_array_identical(actual, expected):
+    xr.testing.assert_identical(actual, expected)
+
+
 @contextmanager
 def assert_memory_ratio(expected_ratio, operation):
     initial_mem = measure_current_mem()
