@@ -3,3 +3,4 @@ xarray
 rioxarray
 pandas
 numpy
+more_itertools
