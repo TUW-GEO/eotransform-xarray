@@ -9,6 +9,8 @@ else
 	mkdir -p ~/.config/pip
 	cat <<- EOF > ~/.config/pip/pip.conf
 	[global]
-	extra-index-url = https://__token__:${TOKEN}@git.eodc.eu/api/v4/projects/717/packages/pypi/simple
+	extra-index-url =
+	  https://__token__:${TOKEN}@git.eodc.eu/api/v4/projects/717/packages/pypi/simple
+	  https://__token__:${TOKEN}@git.eodc.eu/api/v4/projects/719/packages/pypi/simple
 	EOF
 fi

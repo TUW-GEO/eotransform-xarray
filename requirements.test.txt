@@ -1,3 +1,4 @@
 pytest
 pytest-cov
 psutil
+eotransform-pandas[geopath]>=1.0.0
