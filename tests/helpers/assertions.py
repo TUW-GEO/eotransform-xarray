@@ -36,3 +36,7 @@ def measure_current_mem():
 
 def assert_data_frame_eq(actual, expected):
     pd.testing.assert_frame_equal(actual, expected)
+
+
+def assert_dataset_identical(actual, expected):
+    xr.testing.assert_identical(actual, expected)
