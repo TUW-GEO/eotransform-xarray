@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Callable, Union, Optional, Sequence
+from typing import Any, Dict, Callable, Optional, Sequence
 
 import rasterio
 import rioxarray
@@ -7,13 +7,12 @@ import xarray as xr
 from eotransform.collection_transformation import transform_all_dict_elems
 from eotransform.protocol.transformer import PredicatedTransformer, Transformer
 from pandas import DataFrame, Series
-from xarray import DataArray, Dataset
+from xarray import DataArray
 
 CONCATED_ATTRS_KEY = 'concated_attrs'
 BAND_ATTRS_KEY = 'band_attrs'
 
 Parser = Callable[[str], Any]
-XArrayData = Union[DataArray, Dataset]
 
 
 class PredicatedTagsParser(PredicatedTransformer[Any, Any, Any]):
