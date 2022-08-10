@@ -5,9 +5,9 @@ from operator import lt, gt
 import numpy as np
 import pandas as pd
 import rioxarray  # noqa # pylint: disable=unused-import
+from eotransform_pandas.transformers.group_by_n import GroupColumnByN
 
 from assertions import assert_data_array_eq, assert_memory_ratio
-from eotransform_xarray.transformers.files_data_frame import GroupToBands
 from eotransform_xarray.transformers.files_to_xarray import FileDataFrameToDataArray, CONCATED_ATTRS_KEY, BAND_ATTRS_KEY
 from factories import make_raster, iota_arrays, generate_yeoda_geo_tiffs
 from utils import force_loading, consume
@@ -49,7 +49,7 @@ def test_stacked_arrays_are_loaded_lazily(tmp_path, disabled_gc):
 def test_multi_band_from_multiple_geo_tiffs(tmp_path):
     times = pd.date_range(datetime(2015, 1, 1, 12, 30, 42), periods=4, freq='D')
     arrays = list(iota_arrays(0, periods=4, shape=(1, 8, 8)))
-    geo_tiffs = GroupToBands(2)(generate_yeoda_geo_tiffs(tmp_path, times, arrays))
+    geo_tiffs = GroupColumnByN('filepath', 2)(generate_yeoda_geo_tiffs(tmp_path, times, arrays))
     registered_attribute_parsers = dict(light_direction=ast.literal_eval)
 
     stacked_array = FileDataFrameToDataArray(registered_attribute_parsers)(geo_tiffs)

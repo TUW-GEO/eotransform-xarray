@@ -1,11 +1,10 @@
 from typing import Dict, Optional
 
 import numpy as np
-import pandas as pd
+from eotransform_pandas.filesystem.gather import gather_files
+from eotransform_pandas.filesystem.naming.geopathfinder_conventions import yeoda_naming_convention
 from geopathfinder.naming_conventions.yeoda_naming import YeodaFilename
 from xarray import DataArray, Dataset
-
-from eotransform_xarray.filesystem.gather import yeoda_naming_convention, gather_files
 
 
 def make_raster(values, name=None, dims=None, coords=None, attrs=None):
@@ -42,12 +41,6 @@ def generate_yeoda_geo_tiffs(root, date_range, arrays):
         da.rio.to_raster(root / str(yeoda_name))
 
     return gather_files(root, yeoda_naming_convention, index='datetime_1')
-
-
-def make_files_dataset(index, **columns):
-    df = pd.DataFrame(data=columns)
-    df.set_index(index, inplace=True)
-    return df
 
 
 def make_dataset(variables: Dict[str, DataArray], attrs: Optional[Dict] = None) -> Dataset:

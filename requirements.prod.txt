@@ -1,6 +1,6 @@
 eotransform>=1.1
+eotransform-pandas>=1.0.0
 xarray
 rioxarray
-pandas
 numpy
 more_itertools
