@@ -33,7 +33,7 @@ setup: .install.done
 
 .install.test.done:
 	pip install --upgrade pip setuptools
-	pip install -e .[test,lazy]
+	pip install -e .[test,lazy,noise]
 	touch .install.test.done
 
 test: .install.test.done

@@ -12,6 +12,10 @@ def assert_raster_eq(actual, expected):
     xr.testing.assert_equal(actual, make_raster(expected))
 
 
+def assert_raster_allclose(actual, expected):
+    xr.testing.assert_allclose(actual, make_raster(expected))
+
+
 def assert_data_array_eq(actual, expected):
     xr.testing.assert_equal(actual, expected)
     assert actual.attrs == expected.attrs
