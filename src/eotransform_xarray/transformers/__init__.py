@@ -9,3 +9,7 @@ XArrayData = Union[DataArray, Dataset]
 
 class TransformerOfDataArray(Transformer[DataArray, DataArray], ABC):
     ...
+
+
+class TransformerOfXArrayData(Transformer[XArrayData, XArrayData], ABC):
+    ...
