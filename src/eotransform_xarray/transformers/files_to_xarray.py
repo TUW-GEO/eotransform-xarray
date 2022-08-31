@@ -56,7 +56,7 @@ def _read_array_from_tif(tif, tags_parser):
     with rasterio.open(tif) as rds:
         array = rioxarray.open_rasterio(rds).chunk()
         tags = transform_all_dict_elems(rds.tags(), tags_parser)
-        array.attrs = {**array.attrs, **tags}
+        array.attrs['tags'] = tags
     return array
 
 

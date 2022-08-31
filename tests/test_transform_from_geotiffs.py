@@ -30,8 +30,8 @@ def test_stack_geo_tif_file_dataset_based_on_index(tmp_path):
             spatial_ref=0
         ),
         attrs={CONCATED_ATTRS_KEY: [
-            dict(long_name="iota_0", scale_factor=1.0, add_offset=0.0, light_direction=[1, 1, 1]),
-            dict(long_name="iota_1", scale_factor=1.0, add_offset=0.0, light_direction=[1, 1, 1])
+            dict(long_name="iota_0", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
+            dict(long_name="iota_1", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1]))
         ]}))
 
 
@@ -64,11 +64,11 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
         ),
         attrs={CONCATED_ATTRS_KEY: [
             {BAND_ATTRS_KEY: [
-                dict(long_name="iota_0", scale_factor=1.0, add_offset=0.0, light_direction=[1, 1, 1]),
-                dict(long_name="iota_1", scale_factor=1.0, add_offset=0.0, light_direction=[1, 1, 1]),
+                dict(long_name="iota_0", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
+                dict(long_name="iota_1", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
             ]},
             {BAND_ATTRS_KEY: [
-                dict(long_name="iota_2", scale_factor=1.0, add_offset=0.0, light_direction=[1, 1, 1]),
-                dict(long_name="iota_3", scale_factor=1.0, add_offset=0.0, light_direction=[1, 1, 1]),
+                dict(long_name="iota_2", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
+                dict(long_name="iota_3", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
             ]}
         ]}))
