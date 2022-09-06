@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-import rioxarray  # noqa # pylint: disable=unused-import
 
 from assertions import assert_data_array_eq
 from eotransform_xarray.sinks.combine_shards import SHARD_ATTRS_KEY, CombineShards
