@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 import rioxarray  # noqa # pylint: disable=unused-import
 from eotransform_pandas.transformers.group_by_n import GroupColumnByN
+from xarray import DataArray
 
-from assertions import assert_data_array_eq, assert_memory_ratio
+from assertions import assert_memory_ratio, assert_data_array_identical
 from eotransform_xarray.transformers.files_to_xarray import FileDataFrameToDataArray, CONCATED_ATTRS_KEY, BAND_ATTRS_KEY
 from factories import make_raster, iota_arrays, generate_yeoda_geo_tiffs
 from utils import force_loading, consume
@@ -20,14 +21,14 @@ def test_stack_geo_tif_file_dataset_based_on_index(tmp_path):
     registered_attribute_parsers = dict(light_direction=ast.literal_eval)
 
     stacked_array = FileDataFrameToDataArray(registered_attribute_parsers)(geo_tiffs)
-    assert_data_array_eq(stacked_array, make_raster(
+    assert_data_array_identical(stacked_array, make_raster(
         np.stack(arrays), dims=['datetime_1', 'band', 'y', 'x'],
         coords=dict(
-            datetime_1=times,
+            datetime_1=DataArray(times, dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
             band=[1],
-            y=np.arange(8),
-            x=np.arange(8),
-            spatial_ref=0
+            y=np.arange(8, dtype=np.float),
+            x=np.arange(8, dtype=np.float),
+            spatial_ref=DataArray(0, attrs=dict(GeoTransform="-0.5 1.0 0.0 -0.5 0.0 1.0"))
         ),
         attrs={CONCATED_ATTRS_KEY: [
             dict(long_name="iota_0", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
@@ -53,14 +54,14 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
     registered_attribute_parsers = dict(light_direction=ast.literal_eval)
 
     stacked_array = FileDataFrameToDataArray(registered_attribute_parsers)(geo_tiffs)
-    assert_data_array_eq(stacked_array, make_raster(
+    assert_data_array_identical(stacked_array, make_raster(
         np.stack(arrays).reshape((2, 2, 8, 8)), dims=['datetime_1', 'band', 'y', 'x'],
         coords=dict(
-            datetime_1=times[::2],
+            datetime_1=DataArray(times[::2], dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
             band=[0, 1],
-            y=np.arange(8),
-            x=np.arange(8),
-            spatial_ref=0
+            y=np.arange(8, dtype=np.float),
+            x=np.arange(8, dtype=np.float),
+            spatial_ref=DataArray(0, attrs=dict(GeoTransform="-0.5 1.0 0.0 -0.5 0.0 1.0")),
         ),
         attrs={CONCATED_ATTRS_KEY: [
             {BAND_ATTRS_KEY: [
