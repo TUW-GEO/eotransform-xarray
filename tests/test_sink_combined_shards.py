@@ -1,47 +1,10 @@
-from enum import Enum
-from typing import Optional
-
 import numpy as np
 import pytest
 import rioxarray  # noqa # pylint: disable=unused-import
-from xarray import DataArray
 
 from assertions import assert_data_array_eq
-from eotransform_xarray.sinks import DataArraySink
+from eotransform_xarray.sinks.combine_shards import SHARD_ATTRS_KEY, CombineShards
 from factories import make_raster
-
-SHARD_ATTRS_KEY = "shard_attrs"
-
-
-class CombineShards(DataArraySink):
-    class Method(Enum):
-        ASSIGN = 'assign'
-        OR = 'or'
-
-    class CoordinateSystemMismatchError(AttributeError):
-        ...
-
-    def __init__(self, canvas: DataArray, method: Optional[Method] = Method.ASSIGN):
-        self._canvas = canvas
-        self._target_crs = canvas.rio.crs
-        self._method = method
-        self._canvas.attrs[SHARD_ATTRS_KEY] = []
-
-    @property
-    def canvas(self) -> DataArray:
-        return self._canvas
-
-    def __call__(self, x: DataArray) -> None:
-        if x.rio.crs != self._target_crs:
-            raise CombineShards.CoordinateSystemMismatchError(
-                f"coordinate system of canvas {self._canvas.rio.crs} doesn't match to shard {x.rio.crs}")
-
-        if self._method == CombineShards.Method.OR:
-            self._canvas.loc[dict(y=x.y, x=x.x)] |= x
-        else:
-            self._canvas.loc[dict(y=x.y, x=x.x)] = x
-
-        self._canvas.attrs[SHARD_ATTRS_KEY].append(x.attrs)
 
 
 @pytest.fixture
