@@ -22,6 +22,7 @@ def make_raster(values, name=None, dims=None, coords=None, attrs=None):
     return array
 
 
+
 def _ensure_band_dimension(expected):
     expected = np.array(expected)
     if expected.ndim == 2:
