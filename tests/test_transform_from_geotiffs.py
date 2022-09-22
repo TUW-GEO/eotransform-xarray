@@ -1,9 +1,11 @@
 import ast
+from copy import deepcopy
 from datetime import datetime
 from operator import lt, gt
 
 import numpy as np
 import pandas as pd
+import pytest
 import rioxarray  # noqa # pylint: disable=unused-import
 from eotransform_pandas.transformers.group_by_n import GroupColumnByN
 from xarray import DataArray
@@ -12,6 +14,35 @@ from assertions import assert_memory_ratio, assert_data_array_identical
 from eotransform_xarray.transformers.files_to_xarray import FileDataFrameToDataArray, CONCATED_ATTRS_KEY, BAND_ATTRS_KEY
 from factories import make_raster, iota_arrays, generate_yeoda_geo_tiffs
 from utils import force_loading, consume
+
+
+class FunctionSpy:
+    def __init__(self, wrapped):
+        self._wrapped = wrapped
+        self.received_args = []
+        self.received_kwargs = []
+
+    def __call__(self, *args, **kwargs):
+        self.received_args.append(args)
+        self.received_kwargs.append(deepcopy(kwargs))
+        return self._wrapped(*args, **kwargs)
+
+
+@pytest.fixture
+def rioxarray_rasterio_open_spy(monkeypatch):
+    with monkeypatch.context() as m:
+        spy = FunctionSpy(rioxarray.open_rasterio)
+        m.setattr(rioxarray, "open_rasterio", spy)
+        yield spy
+
+
+@pytest.fixture
+def rasterio_open_spy(monkeypatch):
+    from eotransform_xarray.transformers.files_to_xarray import rasterio
+    with monkeypatch.context() as m:
+        spy = FunctionSpy(rasterio.open)
+        m.setattr(rasterio, "open", spy)
+        yield spy
 
 
 def test_stack_geo_tif_file_dataset_based_on_index(tmp_path):
@@ -41,7 +72,7 @@ def test_stacked_arrays_are_loaded_lazily(tmp_path, disabled_gc):
     arrays = list(iota_arrays(0, periods=64, shape=(1024, 1024)))
     geo_tiffs = generate_yeoda_geo_tiffs(tmp_path, times, arrays)
     with assert_memory_ratio(1.05, lt):
-        stacked_array = FileDataFrameToDataArray()(geo_tiffs)
+        stacked_array = FileDataFrameToDataArray(open_rasterio_kwargs=dict(chunks=True))(geo_tiffs)
     with assert_memory_ratio(1.1, gt):
         token = force_loading(stacked_array)
     consume(token)
@@ -73,3 +104,14 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
                 dict(long_name="iota_3", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
             ]}
         ]}))
+
+
+def test_pass_on_kwargs_to_io_drivers(tmp_path, rioxarray_rasterio_open_spy, rasterio_open_spy):
+    times = pd.date_range(datetime(2015, 1, 1, 12, 30, 42), periods=2, freq='D')
+    arrays = list(iota_arrays(0, periods=2, shape=(8, 8)))
+    geo_tiffs = generate_yeoda_geo_tiffs(tmp_path, times, arrays)
+    stacked_array = FileDataFrameToDataArray(open_rasterio_kwargs=dict(chunks=(1, 4, 4)),
+                                             rasterio_open_kwargs=dict(sharing=True))(geo_tiffs)
+    consume(stacked_array)
+    assert rioxarray_rasterio_open_spy.received_kwargs[-1]['chunks'] == (1, 4, 4)
+    assert rasterio_open_spy.received_kwargs[-2]['sharing'] == True
