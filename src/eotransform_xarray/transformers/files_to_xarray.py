@@ -60,7 +60,7 @@ class FileDataFrameToDataArray(Transformer[DataFrame, DataArray]):
 
     def _read_array_from_tif(self, tif, tags_parser):
         with rasterio.open(tif, **self._rasterio_open_kwargs) as rds:
-            array = rioxarray.open_rasterio(rds, **self._open_rasterio_kwargs).chunk()
+            array = rioxarray.open_rasterio(rds, **self._open_rasterio_kwargs)
             tags = transform_all_dict_elems(rds.tags(), tags_parser)
             array.attrs['tags'] = tags
         return array
