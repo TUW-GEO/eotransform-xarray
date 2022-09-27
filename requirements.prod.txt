@@ -1,5 +1,0 @@
-eotransform>=1.1
-xarray
-rioxarray
-numpy
-more_itertools

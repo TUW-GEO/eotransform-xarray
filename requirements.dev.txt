@@ -1,4 +1,0 @@
--r requirements.prod.txt
--r requirements.lazyloading.txt
--r requirements.noise.txt
--r requirements.test.txt
