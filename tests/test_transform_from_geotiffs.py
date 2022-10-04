@@ -49,6 +49,8 @@ def test_stack_geo_tif_file_dataset_based_on_index(tmp_path):
     times = pd.date_range(datetime(2015, 1, 1, 12, 30, 42), periods=2, freq='D')
     arrays = list(iota_arrays(0, periods=2, shape=(1, 8, 8)))
     geo_tiffs = generate_yeoda_geo_tiffs(tmp_path, times, arrays)
+    files = geo_tiffs['filepath'].tolist()
+
     registered_attribute_parsers = dict(light_direction=ast.literal_eval)
 
     stacked_array = FileDataFrameToDataArray(registered_attribute_parsers)(geo_tiffs)
@@ -56,6 +58,7 @@ def test_stack_geo_tif_file_dataset_based_on_index(tmp_path):
         np.stack(arrays), dims=['datetime_1', 'band', 'y', 'x'],
         coords=dict(
             datetime_1=DataArray(times, dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
+            filepath=DataArray(files, dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
             band=[1],
             y=np.arange(8, dtype=np.float),
             x=np.arange(8, dtype=np.float),
@@ -82,6 +85,8 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
     times = pd.date_range(datetime(2015, 1, 1, 12, 30, 42), periods=4, freq='D')
     arrays = list(iota_arrays(0, periods=4, shape=(1, 8, 8)))
     geo_tiffs = GroupColumnByN('filepath', 2)(generate_yeoda_geo_tiffs(tmp_path, times, arrays))
+    file_lists = make_file_list_array(geo_tiffs)
+
     registered_attribute_parsers = dict(light_direction=ast.literal_eval)
 
     stacked_array = FileDataFrameToDataArray(registered_attribute_parsers)(geo_tiffs)
@@ -89,6 +94,7 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
         np.stack(arrays).reshape((2, 2, 8, 8)), dims=['datetime_1', 'band', 'y', 'x'],
         coords=dict(
             datetime_1=DataArray(times[::2], dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
+            filepaths=DataArray(file_lists, dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
             band=[0, 1],
             y=np.arange(8, dtype=np.float),
             x=np.arange(8, dtype=np.float),
@@ -104,6 +110,14 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
                 dict(long_name="iota_3", scale_factor=1.0, add_offset=0.0, tags=dict(light_direction=[1, 1, 1])),
             ]}
         ]}))
+
+
+def make_file_list_array(geo_tiffs):
+    fl_array = np.empty(2, dtype=np.object)
+    file_lists = geo_tiffs['filepaths'].tolist()
+    fl_array[0] = file_lists[0]
+    fl_array[1] = file_lists[1]
+    return fl_array
 
 
 def test_pass_on_kwargs_to_io_drivers(tmp_path, rioxarray_rasterio_open_spy, rasterio_open_spy):

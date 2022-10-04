@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, Callable, Optional, Sequence
 
+import numpy as np
 import rasterio
 import rioxarray
 import xarray as xr
@@ -49,14 +50,17 @@ class FileDataFrameToDataArray(Transformer[DataFrame, DataArray]):
 
     def _read_geo_tiff(self, tif: Path, index: Any, index_name: str, tags_parser: PredicatedTagsParser) -> DataArray:
         array = self._read_array_from_tif(tif, tags_parser)
-        return array.expand_dims(index_name).assign_coords({index_name: [index]})
+        return array.expand_dims(index_name).assign_coords({index_name: (index_name, [index]),
+                                                            "filepath": (index_name, [tif])})
 
     def _read_multi_band_geo_tiffs(self, tiffs: Sequence[Path], index: Any, index_name: str,
                                    tags_parser: PredicatedTagsParser) -> DataArray:
         arrays = [self._read_array_from_tif(t, tags_parser) for t in tiffs]
         array = xr.concat(arrays, dim='band', combine_attrs=_concat_attrs_with_key(BAND_ATTRS_KEY))
+        tiff_array = np.empty((1,), dtype=np.object)
+        tiff_array[0] = tiffs
         return array.expand_dims(index_name).assign_coords(
-            {'band': [i for i in range(len(arrays))], index_name: [index]})
+            {'band': [i for i in range(len(arrays))], index_name: [index], "filepaths": (index_name, tiff_array)})
 
     def _read_array_from_tif(self, tif, tags_parser):
         with rasterio.open(tif, **self._rasterio_open_kwargs) as rds:
