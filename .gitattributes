@@ -1,0 +1,2 @@
+tests/test_transform_resample_with_gauss.test_resample_raster_using_gauss_interpolation.0.approved.tif filter=lfs diff=lfs merge=lfs -text
+tests/test_transform_resample_with_gauss.test_resample_raster_using_gauss_interpolation.1.approved.tif filter=lfs diff=lfs merge=lfs -text
