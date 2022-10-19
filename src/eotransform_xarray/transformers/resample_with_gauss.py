@@ -4,11 +4,16 @@ from typing import Tuple, Optional
 import numpy as np
 import rioxarray  # noqa # pylint: disable=unused-import
 from affine import Affine
-from numba import njit, prange
-from numpy._typing import NDArray, DTypeLike
-from pyresample import SwathDefinition, AreaDefinition
-from pyresample.kd_tree import get_neighbour_info
+from numpy.typing import NDArray, DTypeLike
 from xarray import DataArray
+
+try:
+    from numba import njit, prange
+    from pyresample import SwathDefinition, AreaDefinition
+    from pyresample.kd_tree import get_neighbour_info
+except ImportError:
+    print("ResampleWithGauss requires numba and pyresample.\npip install numba pyresample")
+    raise
 
 from eotransform_xarray.transformers import TransformerOfDataArray
 

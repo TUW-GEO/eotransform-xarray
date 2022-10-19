@@ -4,8 +4,6 @@ import numpy as np
 from affine import Affine
 from approval_utilities.utilities.exceptions.exception_collector import gather_all_exceptions_and_throw
 from approvaltests.namer import NamerFactory
-from equi7grid.equi7grid import Equi7Tile
-from pygeogrids import CellGrid
 from pytest_approvaltests_geo import GeoOptions
 from xarray import DataArray
 
@@ -40,13 +38,3 @@ def mask_and_scale(a: DataArray) -> DataArray:
     a = a.fillna(-9999)
     a.rio.write_nodata(-9999, inplace=True)
     return a.astype(np.int16)
-
-
-def geo_coords_for_tile(grid: CellGrid, tile: Equi7Tile) -> Tuple[np.ndarray, np.ndarray]:
-    west, south, east, north = tile.bbox_geog
-    lats, lons = grid.get_bbox_grid_points(latmin=south, latmax=north, lonmin=west, lonmax=east, coords=True)
-    return lons, lats
-
-
-def limits_of_e7tile(tile: Equi7Tile) -> Tuple[int, int, int, int]:
-    return tile.llx, tile.lly, tile.llx + tile.core.tile_xsize_m, tile.lly + tile.core.tile_ysize_m
