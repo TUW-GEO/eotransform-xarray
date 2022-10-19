@@ -1,6 +1,6 @@
-# eotransform
+![Coverage badge](https://raw.githubusercontent.com/TUW-GEO/eotransform-xarray/python-coverage-comment-action-data/badge.svg)
+# eotransform-xarray
 
-Defines the basic transform protocol to be used in the streamed source to sink concept. Also provides some generic 
-transformer implementations such as `Compose` or `Map`.
+Transformation of xarray raster data.
 
 WIP: More Doc
