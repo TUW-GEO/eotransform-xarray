@@ -91,7 +91,7 @@ class StorageIntoTheVoid(Storage):
         return False
 
     def load(self) -> Mapping[str, Any]:
-        raise NotImplementedErrorF("Can't load from the void.")
+        raise NotImplementedError("Can't load from the void.")
 
     def save(self, data: Mapping[str, Any]) -> None:
         pass
