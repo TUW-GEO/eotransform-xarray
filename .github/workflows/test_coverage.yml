@@ -7,18 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          lfs: 'true'
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
       - name: Test
-        run: make test
+        run: |
+          git lfs install
+          git lfs pull
+          make test
+          git lfs uninstall
       - name: Coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
           VERBOSE: false
-          lfs: 'true'
