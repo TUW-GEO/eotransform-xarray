@@ -58,7 +58,7 @@ def mask_and_scale(a: DataArray) -> DataArray:
     return a.astype(np.int16)
 
 
-def test_resample_raster_with_gauss_uses_max_lookup_radius(verify_raster_as_geo_tif):
+def test_resample_raster_with_gauss_uses_max_lookup_radius():
     swath = make_swath([12.0, 16.0], [47.9, 45.2])
     swath.lons[0, -1] = 21.5
     swath.lats[0, -1] = 40.5
