@@ -1,16 +1,17 @@
-from typing import Tuple, Any
+from typing import Any
 
 import numpy as np
 from affine import Affine
-
 from approval_utilities.utilities.exceptions.exception_collector import gather_all_exceptions_and_throw
 from approvaltests.namer import NamerFactory
 from numpy.typing import ArrayLike
 from pytest_approvaltests_geo import GeoOptions
 from xarray import DataArray
 
-from eotransform_xarray.transformers.resample_with_gauss import Swath, Extent, Area, ResampleWithGauss
-from helpers.assertions import assert_raster_eq, assert_data_array_eq
+from eotransform_xarray.storage.storage_using_zarr import StorageUsingZarr
+from eotransform_xarray.transformers.resample_with_gauss import Swath, Extent, Area, ResampleWithGauss, \
+    ProjectionParameter
+from helpers.assertions import assert_data_array_eq
 
 DEFAULT_TEST_EXTENT = Extent(4800000, 1200000, 5400000, 1800000)
 DEFAULT_TEST_TRANSFORM = Affine.from_gdal(4800000, 3000, 0, 1800000, 0, 3000)
@@ -68,3 +69,25 @@ def test_resample_raster_with_gauss_uses_max_lookup_radius():
     resampled = resample(in_data)
 
     assert_data_array_eq(resampled[0, 0], resampled[0, 1])
+
+
+def test_store_resampling_transformation(tmp_path):
+    swath = make_swath([12.0, 16.0], [47.9, 45.2])
+    in_data = make_swath_data_array([[[1, 2, 4, 8]], [[1, 2, 4, np.nan]]], swath)
+    zarr_storage = StorageUsingZarr(tmp_path / "resampling.zarr")
+
+    ResampleWithGauss(swath, make_target_area(200, 200), sigma=2e5, neighbours=4, lookup_radius=1e6,
+                      resampling_parameter_storage=zarr_storage)
+
+    flip_stored_valid_input_bit_at(-1, zarr_storage)
+    resample_stored = ResampleWithGauss(swath, make_target_area(200, 200), sigma=2e5, neighbours=4, lookup_radius=1e6,
+                                        resampling_parameter_storage=zarr_storage)
+
+    resampled_with_last_input_masked = resample_stored(in_data)
+    assert_data_array_eq(resampled_with_last_input_masked[0, 0], resampled_with_last_input_masked[1, 0])
+
+
+def flip_stored_valid_input_bit_at(index, zarr_storage):
+    projection_params = ProjectionParameter.from_storage(zarr_storage)
+    projection_params.valid_input_indices[index] = not projection_params.valid_input_indices[index]
+    projection_params.store(zarr_storage)

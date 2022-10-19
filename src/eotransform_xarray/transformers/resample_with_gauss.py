@@ -1,11 +1,13 @@
-from dataclasses import dataclass
-from typing import Tuple, Optional
+from dataclasses import dataclass, asdict
+from typing import Tuple, Optional, Mapping, Any
 
 import numpy as np
 import rioxarray  # noqa # pylint: disable=unused-import
 from affine import Affine
 from numpy.typing import NDArray, DTypeLike
 from xarray import DataArray
+
+from eotransform_xarray.storage.storage import Storage
 
 try:
     from numba import njit, prange
@@ -53,6 +55,13 @@ class ProjectionParameter:
     indices: NDArray
     weights: NDArray
 
+    @classmethod
+    def from_storage(cls, storage: Storage) -> "ProjectionParameter":
+        return ProjectionParameter(**{f: np.asarray(v) for f, v in storage.load().items()})
+
+    def store(self, storage: Storage) -> None:
+        storage.save(asdict(self))
+
 
 class MaybePacked:
     def __init__(self, value: NDArray, is_packed: bool = False):
@@ -77,14 +86,30 @@ def gauss_parallel_inplace(distances: NDArray, sigma: float) -> None:
         distances[:, i] = np.exp(-distances[:, i] ** 2 / sig_sqrd)
 
 
+class StorageIntoTheVoid(Storage):
+    def exists(self) -> bool:
+        return False
+
+    def load(self) -> Mapping[str, Any]:
+        raise NotImplementedErrorF("Can't load from the void.")
+
+    def save(self, data: Mapping[str, Any]) -> None:
+        pass
+
+
 class ResampleWithGauss(TransformerOfDataArray):
     class MismatchError(ValueError):
         ...
 
     def __init__(self, swath_src: Swath, area_dst: Area, sigma: float, neighbours: int, lookup_radius: float,
-                 n_procs: Optional[int] = 1):
+                 n_procs: Optional[int] = 1, resampling_parameter_storage: Optional[Storage] = None):
         self._area_dst = area_dst
-        self._projection_params = self._calc_projection(swath_src, area_dst, neighbours, lookup_radius, n_procs)
+        self._params_storage = resampling_parameter_storage or StorageIntoTheVoid()
+        if self._params_storage.exists():
+            self._projection_params = ProjectionParameter.from_storage(self._params_storage)
+        else:
+            self._projection_params = self._calc_projection(swath_src, area_dst, neighbours, lookup_radius, n_procs)
+            self._projection_params.store(self._params_storage)
         self._transform_distances_to_gauss_weights(self._projection_params.weights, sigma)
 
     @staticmethod
