@@ -21,3 +21,4 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ github.token }}
           VERBOSE: false
+          lfs: 'true'
