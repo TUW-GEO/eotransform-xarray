@@ -1,4 +1,5 @@
-from typing import Any
+from datetime import datetime
+from typing import Any, Sequence, Optional
 
 import numpy as np
 from affine import Affine
@@ -42,12 +43,15 @@ def make_target_area(columns: int, rows: int) -> Area:
     return Area("test_area", DEFAULT_TEST_PROJECTION, columns, rows, DEFAULT_TEST_EXTENT, DEFAULT_TEST_TRANSFORM)
 
 
-def make_swath_data_array(values: Any, swath: Swath) -> DataArray:
+def make_swath_data_array(values: Any, swath: Swath, ts: Optional[Sequence[datetime]] = None,
+                          parameters: Optional[Sequence[str]] = None) -> DataArray:
     values = np.array(values)
-    return DataArray(values, dims=['time', 'parameter', 'value'], coords=(dict(
-        time=np.arange(0, values.shape[0]),
-        lon=(('time', 'parameter', 'value'), np.tile(swath.lons, (*values.shape[:-1], 1))),
-        lat=(('time', 'parameter', 'value'), np.tile(swath.lats, (*values.shape[:-1], 1))))))
+    coords = dict(time=ts or np.arange(0, values.shape[0]),
+                  lon=(('time', 'parameter', 'value'), np.tile(swath.lons, (*values.shape[:-1], 1))),
+                  lat=(('time', 'parameter', 'value'), np.tile(swath.lats, (*values.shape[:-1], 1))))
+    if parameters:
+        coords['parameter'] = parameters
+    return DataArray(values, dims=['time', 'parameter', 'value'], coords=coords)
 
 
 def mask_and_scale(a: DataArray) -> DataArray:
@@ -84,10 +88,31 @@ def test_store_resampling_transformation(tmp_path):
                                         resampling_parameter_storage=zarr_storage)
 
     resampled_with_last_input_masked = resample_stored(in_data)
-    assert_data_array_eq(resampled_with_last_input_masked[0, 0], resampled_with_last_input_masked[1, 0])
+    assert_array_eq(resampled_with_last_input_masked[0, 0].values, resampled_with_last_input_masked[1, 0].values)
+
+
+def assert_array_eq(actual: np.ndarray, expected: np.ndarray):
+    np.testing.assert_array_equal(actual, expected)
 
 
 def flip_stored_valid_input_bit_at(index, zarr_storage):
     projection_params = ProjectionParameter.from_storage(zarr_storage)
     projection_params.valid_input_indices[index] = not projection_params.valid_input_indices[index]
     projection_params.store(zarr_storage)
+
+
+def test_resample_raster_preserves_coordinates():
+    swath = make_swath([12.0, 16.0], [47.9, 45.2])
+    in_data = make_swath_data_array([[[1, 2, 4, 8]], [[1, 2, 4, np.nan]]], swath,
+                                    ts=[datetime(2022, 10, 20), datetime(2022, 10, 21)],
+                                    parameters=['value_name'])
+
+    resample = ResampleWithGauss(swath, make_target_area(200, 200), sigma=2e5, neighbours=4, lookup_radius=5e5)
+    resampled = resample(in_data)
+
+    assert_ts_eq(resampled['time'], [datetime(2022, 10, 20), datetime(2022, 10, 21)])
+    assert resampled['parameter'][0] == 'value_name'
+
+
+def assert_ts_eq(actual, expected):
+    np.testing.assert_array_equal(np.asarray(actual, dtype='datetime64'), np.array(expected, dtype='datetime64'))

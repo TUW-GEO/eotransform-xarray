@@ -142,6 +142,8 @@ class ResampleWithGauss(TransformerOfDataArray):
         r_arr = DataArray(result, dims=(*x.dims[:-1], "y", "x"), attrs=x.attrs)
         r_arr.rio.write_crs(self._area_dst.projection, inplace=True)
         r_arr.rio.write_transform(self._area_dst.transform, inplace=True)
+        crds = {c: x.coords[c] for c in x.coords if c in x.dims and c not in {'y', 'x'}}
+        r_arr = r_arr.assign_coords(crds)
         return r_arr
 
     def _sanity_check_input(self, x: DataArray):
