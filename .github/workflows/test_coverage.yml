@@ -17,7 +17,7 @@ jobs:
           git lfs pull
           make test
           git lfs uninstall
-          git push origin -f --delete python-coverage-comment-action-data
+          git push origin --delete python-coverage-comment-action-data || true
       - name: Coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3
