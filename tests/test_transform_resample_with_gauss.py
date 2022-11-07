@@ -97,7 +97,7 @@ def assert_array_eq(actual: np.ndarray, expected: np.ndarray):
 
 def flip_stored_valid_input_bit_at(index, zarr_storage):
     projection_params = ProjectionParameter.from_storage(zarr_storage)
-    projection_params.valid_input_indices[index] = not projection_params.valid_input_indices[index]
+    projection_params.valid_input[index] = not projection_params.valid_input[index]
     projection_params.store(zarr_storage)
 
 
