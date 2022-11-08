@@ -1,10 +1,9 @@
 from dataclasses import dataclass, asdict
-from typing import Tuple, Optional, Mapping, Any
+from typing import Tuple, Optional
 
-import dask.array as da
 import numpy as np
-import xarray as xr
 import rioxarray  # noqa # pylint: disable=unused-import
+import xarray as xr
 from affine import Affine
 from numpy.typing import NDArray, DTypeLike
 from xarray import DataArray, Dataset
@@ -80,10 +79,11 @@ class MaybePacked:
 
 
 @njit(parallel=True)
-def gauss_parallel_inplace(distances: NDArray, sigma: float) -> None:
+def gauss_parallel_inplace(distances: NDArray, sigma: float, out: NDArray) -> None:
     sig_sqrd = sigma ** 2
-    for i in prange(distances.shape[1]):
-        distances[:, i] = np.exp(-distances[:, i] ** 2 / sig_sqrd)
+    for y in prange(distances.shape[1]):
+        for x in prange(distances.shape[2]):
+            out[:, y, x] = np.exp(-distances[:, y, x] ** 2 / sig_sqrd)
 
 
 class StorageIntoTheVoid(Storage):
@@ -102,70 +102,64 @@ class ResampleWithGauss(TransformerOfDataArray):
         ...
 
     def __init__(self, swath_src: Swath, area_dst: Area, sigma: float, neighbours: int, lookup_radius: float,
-                 n_procs: Optional[int] = 1, resampling_parameter_storage: Optional[Storage] = None):
+                 raster_chunk_sizes: Tuple[int, int], n_procs: Optional[int] = 1,
+                 resampling_parameter_storage: Optional[Storage] = None):
         self._area_dst = area_dst
         self._params_storage = resampling_parameter_storage or StorageIntoTheVoid()
         if self._params_storage.exists():
             self._projection_params = ProjectionParameter.from_storage(self._params_storage)
         else:
-            self._projection_params = self._calc_projection(swath_src, area_dst, neighbours, lookup_radius, n_procs)
+            self._projection_params = self._calc_projection(swath_src, area_dst, neighbours, lookup_radius,
+                                                            raster_chunk_sizes, n_procs)
             self._projection_params.store(self._params_storage)
-        self._transform_distances_to_gauss_weights(self._projection_params.out_resampling['weights'].values, sigma)
+        self._projection_params.out_resampling['weights'] = \
+            self._distances_to_gauss_weights(self._projection_params.out_resampling['weights'], sigma)
 
     @staticmethod
     def _calc_projection(swath: Swath, area: Area, neighbours: int, lookup_radius: float,
-                         n_procs: int) -> ProjectionParameter:
+                         raster_chunks: Tuple[int, int], n_procs: int) -> ProjectionParameter:
         sw_def = SwathDefinition(swath.lons.swapaxes(0, -1), swath.lats.swapaxes(0, -1))
         ar_def = AreaDefinition(area.name, area.description, "proj_id", area.projection, area.columns, area.rows,
                                 area.extent.to_tuple())
         val_in_idc, val_out_idc, idc, distances = get_neighbour_info(sw_def, ar_def, lookup_radius, neighbours,
                                                                      nprocs=n_procs)
         packed_idc = MaybePacked(idc) | np.uint8 | np.uint16 | np.uint32 | np.uint64
-        packed_idc = packed_idc.value.swapaxes(0, -1)
-        distances = distances.swapaxes(0, -1).astype(np.float32)
-        out_mask = val_out_idc[np.newaxis, ...]
-        return ProjectionParameter(Dataset({'mask': val_in_idc}, coords={'lon': ('location', swath.lons[0]),
-                                                                         'lat': ('location', swath.lats[0])}),
-                                   ResampleWithGauss._to_raster_dataset(
-                                       {'indices': (('neighbours', 'location'), packed_idc),
-                                        'weights': (('neighbours', 'location'), distances),
-                                        'mask': (('cell', 'location'), out_mask)},
-                                       area))
+        packed_idc = packed_idc.value.swapaxes(0, -1).reshape((-1, area.rows, area.columns))
+        distances = distances.swapaxes(0, -1).astype(np.float32).reshape((-1, area.rows, area.columns))
+        out_mask = val_out_idc[np.newaxis, ...].reshape((-1, area.rows, area.columns))
+        return ProjectionParameter(Dataset({'mask': (('cell', 'location'), val_in_idc[np.newaxis, ...])},
+                                           coords={'lon': ('location', swath.lons[0]),
+                                                   'lat': ('location', swath.lats[0])})
+                                   .chunk({'cell': -1, 'location': -1}),
+                                   Dataset({'indices': (('neighbours', 'y', 'x'), packed_idc),
+                                            'weights': (('neighbours', 'y', 'x'), distances),
+                                            'mask': (('cell', 'y', 'x'), out_mask)})
+                                   .chunk({'neighbours': -1, 'cell': -1, 'y': raster_chunks[0], 'x': raster_chunks[1]})
+                                   .rio.write_crs(area.projection).rio.write_transform(area.transform))
 
     @staticmethod
-    def _to_raster_dataset(datas: Mapping[str, Tuple[Tuple[str, str], NDArray]], area: Area) -> Dataset:
-        y = np.tile(np.arange(200), 40000 // 200)
-        x = np.tile(np.arange(200), 40000 // 200)
-        ds = Dataset(datas, coords={'y': ('location', y), 'x': ('location', x)})
-        ds = ds.set_index(location=("y", "x")).unstack("location")
-        ds.rio.set_spatial_dims('x', 'y', inplace=True)
-        ds.rio.write_crs(area.projection, inplace=True)
-        ds.rio.write_transform(area.transform, inplace=True)
-        return ds
-
-    @staticmethod
-    def _transform_distances_to_gauss_weights(distances: NDArray, sigma: float) -> None:
-        gauss_parallel_inplace(distances, sigma)
+    def _distances_to_gauss_weights(distances: DataArray, sigma: float) -> DataArray:
+        sig_sqrd = sigma ** 2
+        return np.exp(-distances ** 2 / sig_sqrd)
 
     def __call__(self, x: DataArray) -> DataArray:
         self._sanity_check_input(x)
-        r_arr = xr.apply_ufunc(_resample, x,
-                               self._projection_params.valid_input,
-                               self._projection_params.indices,
-                               self._projection_params.weights,
-                               self._projection_params.valid_output,
-                               input_core_dims=[['value', 'time', 'parameter'], [], [], [], []],
-                               output_core_dims=[['value', 'time', 'parameter']],
-                               exclude_dims={'value'},
-                               dask='parallelized')
-
-        # r_arr = r_arr.assign_coords({'y': ('value', np.arange(r_arr.sizes['value'])),
-        #                              'x': ('value', np.arange(r_arr.sizes['value']))})
-        # r_arr = r_arr.set_index(value=('y', 'x')).unstack('value')
-        r_arr.rio.write_crs(self._area_dst.projection, inplace=True)
-        r_arr.rio.write_transform(self._area_dst.transform, inplace=True)
+        x = x[..., self._projection_params.in_resampling['mask'][0].values]
+        r_arr = xr.apply_ufunc(_resample,
+                               self._projection_params.out_resampling['indices'],
+                               self._projection_params.out_resampling['weights'],
+                               self._projection_params.out_resampling['mask'].astype(bool),
+                               kwargs=dict(in_data=x.values),
+                               input_core_dims=[['neighbours'], ['neighbours'], ['cell']],
+                               output_core_dims=[['time', 'parameter']],
+                               output_dtypes=[np.float32],
+                               dask_gufunc_kwargs=dict(
+                                   output_sizes={'time': x.sizes['time'], 'parameter': x.sizes['parameter']}),
+                               dask='parallelized', keep_attrs=True)
+        r_arr = r_arr.transpose('time', 'parameter', 'y', 'x')
         crds = {c: x.coords[c] for c in x.coords if c in x.dims and c not in {'y', 'x'}}
         r_arr = r_arr.assign_coords(crds)
+        r_arr.attrs = x.attrs
         return r_arr
 
     def _numba_resample(self, x):
@@ -185,61 +179,32 @@ class ResampleWithGauss(TransformerOfDataArray):
         return r_arr
 
     def _sanity_check_input(self, x: DataArray):
-        if self._projection_params.valid_input.size != x.shape[-1]:
+        if self._projection_params.in_resampling['mask'].size != x.shape[-1]:
             raise ResampleWithGauss.MismatchError("Mismatch between resample transformation projection and input data:"
                                                   "\nvalid_indices' size doesn't match input data value length:\n"
-                                                  f"{self._projection_params.valid_input.shape} != {x.shape}")
+                                                  f"{self._projection_params.in_resampling.sizes} != {x.shape}")
 
 
-def _resample(x, in_valid, indices, weights, out_valid):
-    x = x[in_valid, ...]
-    neighbours, out_size = indices.shape
-    in_size, times, parameters = x.shape
-    out = np.empty((out_size, times, parameters), dtype=np.float32)
+def _resample(indices: NDArray, weights: NDArray, out_valid: NDArray, in_data: NDArray) -> NDArray:
+    times, parameters, in_size = in_data.shape
+    out = np.full(indices.shape[:2] + in_data.shape[:2], np.nan, dtype=np.float32)
+    neighbours = indices.shape[-1]
 
-    for parameter in range(parameters):
-        for time in range(times):
-            for out_idx in range(out_size):
-                if out_valid[out_idx]:
-                    weighted_sum = 0.0
-                    sum_of_weights = 0.0
-                    for n_i in range(neighbours):
-                        sample_idx = indices[n_i, out_idx]
-                        if sample_idx != in_size:
-                            weight = weights[n_i, out_idx]
-                            sampled = x[sample_idx, time, parameter]
-                            if not np.isnan(sampled):
-                                weighted_sum += sampled * weight
-                                sum_of_weights += weight
+    for y in range(indices.shape[0]):
+        for x in range(indices.shape[1]):
+            if out_valid[y, x, 0]:
+                for time in range(times):
+                    for parameter in range(parameters):
+                        weighted_sum = 0.0
+                        sum_of_weights = 0.0
+                        for n_i in range(neighbours):
+                            neighbour_idx = indices[y, x, n_i]
+                            if neighbour_idx != in_size:
+                                weight = weights[y, x, n_i]
+                                sample = in_data[time, parameter, neighbour_idx]
+                                if not np.isnan(sample):
+                                    weighted_sum += sample * weight
+                                    sum_of_weights += weight
 
-                    out[out_idx, time, parameter] = weighted_sum / sum_of_weights if sum_of_weights > 0 else np.nan
-                else:
-                    out[out_idx, time, parameter] = np.nan
-
+                        out[y, x, time, parameter] = weighted_sum / sum_of_weights if sum_of_weights > 0 else np.nan
     return out
-
-
-@njit(parallel=True)
-def _resample_swath_to_area(indices: NDArray, weights: NDArray, valid_data: NDArray, out_valid: NDArray,
-                            out: NDArray) -> None:
-    neighbours, out_size = indices.shape
-    times, parameters, in_size = valid_data.shape
-
-    for parameter in range(parameters):
-        for time in range(times):
-            for out_idx in prange(out_size):
-                if out_valid[out_idx]:
-                    weighted_sum = 0.0
-                    sum_of_weights = 0.0
-                    for n_i in prange(neighbours):
-                        sample_idx = indices[n_i, out_idx]
-                        if sample_idx != in_size:
-                            weight = weights[n_i, out_idx]
-                            sampled = valid_data[time, parameter, sample_idx]
-                            if not np.isnan(sampled):
-                                weighted_sum += sampled * weight
-                                sum_of_weights += weight
-
-                    out[time, parameter, out_idx] = weighted_sum / sum_of_weights if sum_of_weights > 0 else np.nan
-                else:
-                    out[time, parameter, out_idx] = np.nan
