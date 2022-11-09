@@ -139,16 +139,13 @@ class ResampleWithGauss(TransformerOfDataArray):
         r_arr = xr.apply_ufunc(_resample,
                                self._projection_params.out_resampling['indices'],
                                self._projection_params.out_resampling['weights'],
-                               self._projection_params.out_resampling['mask'].astype(bool),
-                               kwargs=dict(in_data=x.values,
-                                           in_valid=self._projection_params.in_resampling['mask'].astype(bool).values),
-                               input_core_dims=[['neighbours'], ['neighbours'], ['cell']],
-                               output_core_dims=[x.dims[:2]],
+                               self._projection_params.out_resampling['mask'][0].astype(bool),
+                               x,
+                               self._projection_params.in_resampling['mask'][0].astype(bool),
+                               input_core_dims=[['neighbours'], ['neighbours'], [], x.dims[-1:], ['location']],
                                output_dtypes=[np.float32],
-                               dask_gufunc_kwargs=dict(
-                                   output_sizes={x.dims[0]: x.sizes[x.dims[0]], x.dims[1]: x.sizes[x.dims[1]]}),
                                dask='parallelized', keep_attrs=True)
-        r_arr = r_arr.transpose('time', 'parameter', 'y', 'x')
+        r_arr = r_arr.transpose(*x.dims[:2], 'y', 'x')
         crds = {c: x.coords[c] for c in x.coords if c in x.dims and c not in {'y', 'x'}}
         r_arr = r_arr.assign_coords(crds)
         r_arr.attrs = x.attrs
@@ -162,11 +159,15 @@ class ResampleWithGauss(TransformerOfDataArray):
 
 
 def _resample(indices: NDArray, weights: NDArray, out_valid: NDArray, in_data: NDArray, in_valid: NDArray) -> NDArray:
-    in_data = np.ma.array(in_data, mask=np.isnan(in_data) | ~in_valid[np.newaxis, ...])
+    in_data = np.ma.array(in_data, mask=np.isnan(in_data) | ~in_valid[np.newaxis, np.newaxis, :])
     times, parameters, in_size = in_data.shape
+    indices = indices.squeeze((2, 3))
+    out_valid = out_valid.squeeze(3)
     invalid_idc = indices == in_size
     out = in_data[:, :, np.where(invalid_idc, 0, indices)]
     out[:, :, ~out_valid | invalid_idc] = np.ma.masked
+
+    weights = weights.squeeze((2, 3))
     out, w_sums = np.ma.average(out, axis=-1, weights=np.broadcast_to(weights, (times, parameters) + weights.shape),
                                 returned=True)
     out[w_sums <= 0] = np.ma.masked
