@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from affine import Affine
 from approval_utilities.utilities.exceptions.exception_collector import gather_all_exceptions_and_throw
+from approvaltests import Options
 from approvaltests.namer import NamerFactory
 from numpy.typing import ArrayLike
 from pytest_approvaltests_geo import GeoOptions
@@ -26,7 +27,19 @@ def processing_config(request):
     return ProcessingConfig(resampling_engine=request.param)
 
 
-def test_resample_raster_using_gauss_interpolation(verify_raster_as_geo_tif, processing_config):
+@pytest.fixture
+def verify_raster(verify_geo_tif_with_namer, tmp_path_factory):
+    def _verify_fn(tile: DataArray,
+                   *,  # enforce keyword arguments - https://www.python.org/dev/peps/pep-3102/
+                   options: Optional[Options] = None):
+        tile_file = tmp_path_factory.mktemp("raster_as_geo_tif") / "raster.tif"
+        tile.rio.to_raster(tile_file)
+        verify_geo_tif_with_namer(tile_file, options.namer, options=GeoOptions.from_options(options))
+
+    return _verify_fn
+
+
+def test_resample_raster_using_gauss_interpolation(verify_raster, processing_config):
     swath = make_swath([12.0, 16.0], [47.9, 45.2])
     in_data = make_swath_data_array([[[1, 2, 4, 8]], [[1, 2, 4, np.nan]]], swath)
 
@@ -34,9 +47,9 @@ def test_resample_raster_using_gauss_interpolation(verify_raster_as_geo_tif, pro
                                  processing_config=processing_config)
     resampled = resample(in_data)
 
-    gather_all_exceptions_and_throw([0, 1], lambda t: verify_raster_as_geo_tif(
+    gather_all_exceptions_and_throw([0, 1], lambda t: verify_raster(
         mask_and_scale(resampled[t]),
-        options=GeoOptions.from_options(NamerFactory.with_parameters(t))
+        options=NamerFactory.with_parameters(t).for_file.with_extension('.tif')
     ))
 
 
