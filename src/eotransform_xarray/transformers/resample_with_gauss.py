@@ -166,11 +166,6 @@ class ResampleWithGauss(TransformerOfDataArray):
                                        dask='parallelized', keep_attrs=True)
         resampled.attrs = x.attrs
         return resampled
-        # r_arr = r_arr.transpose(*x.dims[:2], 'y', 'x')
-        # crds = {c: x.coords[c] for c in x.coords if c in x.dims and c not in {'y', 'x'}}
-        # r_arr = r_arr.assign_coords(crds)
-        # r_arr.attrs = x.attrs
-        # return r_arr
 
     def _sanity_check_input(self, x: DataArray):
         if self._projection_params.in_resampling['mask'].size != x.shape[-1]:
@@ -194,19 +189,6 @@ def _resample_numba(in_data: NDArray, in_valid: NDArray, indices: NDArray, weigh
     out = np.full((times, parameters) + out_valid.shape, np.nan, dtype=in_data.dtype)
     _resample_to_parallel(in_data, in_valid, indices, weights, out_valid, out)
     return out
-
-    # in_data = np.ma.array(in_data, mask=np.isnan(in_data) | ~in_valid[np.newaxis, np.newaxis, :])
-    # indices = indices.squeeze((2, 3))
-    # out_valid = out_valid.squeeze(3)
-    # invalid_idc = indices == in_size
-    # out = in_data[:, :, np.where(invalid_idc, 0, indices)]
-    # out[:, :, ~out_valid | invalid_idc] = np.ma.masked
-    #
-    # weights = weights.squeeze((2, 3))
-    # out, w_sums = np.ma.average(out, axis=-1, weights=np.broadcast_to(weights, (times, parameters) + weights.shape),
-    #                             returned=True)
-    # out[w_sums <= 0] = np.ma.masked
-    # return out.filled(np.nan).transpose((2, 3, 0, 1))
 
 
 @njit(parallel=False)
