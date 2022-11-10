@@ -151,17 +151,18 @@ class ResampleWithGauss(TransformerOfDataArray):
     def __call__(self, x: DataArray) -> DataArray:
         self._sanity_check_input(x)
         in_valid = self._projection_params.in_resampling['mask'][:, 0].astype(bool)
+        valid_data = x[..., in_valid.values]
         indices = self._projection_params.out_resampling['indices']
         weights = self._projection_params.out_resampling['weights']
         out_valid = self._projection_params.out_resampling['mask'][:, :, 0].astype(bool)
         if self._proc_cfg.resampling_engine == 'numba':
             resampled = DataArray(
-                _resample_numba(x.values, in_valid.values, indices.values, weights.values, out_valid.values),
+                _resample_numba(valid_data.values, indices.values, weights.values, out_valid.values),
                 dims=x.dims[:2] + out_valid.dims,
                 coords={**{k: v for k, v in x.coords.items() if k in x.dims[:2]}, **out_valid.coords})
         else:
-            resampled = xr.apply_ufunc(_resample_dask, x, in_valid, indices, weights, out_valid,
-                                       input_core_dims=[x.dims[-1:], ['location'], ['neighbours'], ['neighbours'], []],
+            resampled = xr.apply_ufunc(_resample_dask, valid_data, indices, weights, out_valid,
+                                       input_core_dims=[x.dims[-1:], ['neighbours'], ['neighbours'], []],
                                        output_dtypes=[np.float32],
                                        dask='parallelized', keep_attrs=True)
         resampled.attrs = x.attrs
@@ -174,38 +175,35 @@ class ResampleWithGauss(TransformerOfDataArray):
                                                   f"{self._projection_params.in_resampling.sizes} != {x.shape}")
 
 
-def _resample_dask(in_data: NDArray, in_valid: NDArray, indices: NDArray, weights: NDArray,
-                   out_valid: NDArray) -> NDArray:
+def _resample_dask(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:
     in_data = in_data.squeeze((2, 3))
     times, parameters = in_data.shape[:2]
     out = np.full((times, parameters) + out_valid.shape, np.nan, dtype=in_data.dtype)
-    _resample_to_single_threaded(in_data, in_valid, indices, weights, out_valid, out)
+    _resample_to_single_threaded(in_data, indices, weights, out_valid, out)
     return out
 
 
-def _resample_numba(in_data: NDArray, in_valid: NDArray, indices: NDArray, weights: NDArray,
-                    out_valid: NDArray) -> NDArray:
+def _resample_numba(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:
     times, parameters = in_data.shape[:2]
     out = np.full((times, parameters) + out_valid.shape, np.nan, dtype=in_data.dtype)
-    _resample_to_parallel(in_data, in_valid, indices, weights, out_valid, out)
+    _resample_to_parallel(in_data, indices, weights, out_valid, out)
     return out
 
 
 @njit(parallel=False)
-def _resample_to_single_threaded(in_data: NDArray, in_valid: NDArray, indices: NDArray, weights: NDArray,
-                                 out_valid: NDArray,
+def _resample_to_single_threaded(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
                                  out: NDArray) -> None:
-    _resample_to_operation(in_data, in_valid, indices, out, out_valid, weights)
+    _resample_to_operation(in_data, indices, out, out_valid, weights)
 
 
 @njit(parallel=True)
-def _resample_to_parallel(in_data: NDArray, in_valid: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
+def _resample_to_parallel(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
                           out: NDArray) -> None:
-    _resample_to_operation(in_data, in_valid, indices, out, out_valid, weights)
+    _resample_to_operation(in_data, indices, out, out_valid, weights)
 
 
 @njit(inline='always')
-def _resample_to_operation(in_data, in_valid, indices, out, out_valid, weights):
+def _resample_to_operation(in_data, indices, out, out_valid, weights):
     times, parameters, in_size = in_data.shape
     for y in prange(out.shape[-2]):
         for x in prange(out.shape[-1]):
@@ -218,7 +216,7 @@ def _resample_to_operation(in_data, in_valid, indices, out, out_valid, weights):
                             sample_idx = indices[y, x, neighbour]
                             if sample_idx != in_size:
                                 sample = in_data[time, parameter, sample_idx]
-                                if in_valid[sample_idx] and not np.isnan(sample):
+                                if not np.isnan(sample):
                                     w = weights[y, x, neighbour]
                                     weighted_sum += w * sample
                                     summed_weights += w
