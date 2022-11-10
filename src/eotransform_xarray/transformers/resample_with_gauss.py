@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict, field
-from typing import Tuple, Union, Literal, Mapping, Any
+from typing import Tuple, Union, Literal, Mapping, Any, Optional
 
 import numpy as np
 import rioxarray  # noqa # pylint: disable=unused-import
@@ -106,7 +106,7 @@ class ResampleWithGauss(TransformerOfDataArray):
         ...
 
     def __init__(self, swath_src: Swath, area_dst: Area, sigma: float, neighbours: int, lookup_radius: float,
-                 processing_config: ProcessingConfig = None):
+                 processing_config: Optional[ProcessingConfig] = None):
         self._area_dst = area_dst
         self._proc_cfg = processing_config or ProcessingConfig()
         if self._proc_cfg.parameter_storage.exists():
