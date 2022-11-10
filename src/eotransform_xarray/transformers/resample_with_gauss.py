@@ -151,19 +151,19 @@ class ResampleWithGauss(TransformerOfDataArray):
     def __call__(self, x: DataArray) -> DataArray:
         self._sanity_check_input(x)
         in_valid = self._projection_params.in_resampling['mask'][:, 0].astype(bool)
-        valid_data = x[..., in_valid.values]
+        x = x[..., in_valid.values]
         indices = self._projection_params.out_resampling['indices']
         weights = self._projection_params.out_resampling['weights']
         out_valid = self._projection_params.out_resampling['mask'][:, :, 0].astype(bool)
         if self._proc_cfg.resampling_engine == 'numba':
             resampled = DataArray(
-                _resample_numba(valid_data.values, indices.values, weights.values, out_valid.values),
+                _resample_numba(x.values, indices.values, weights.values, out_valid.values),
                 dims=x.dims[:2] + out_valid.dims,
                 coords={**{k: v for k, v in x.coords.items() if k in x.dims[:2]}, **out_valid.coords})
         else:
-            resampled = xr.apply_ufunc(_resample_dask, valid_data, indices, weights, out_valid,
+            resampled = xr.apply_ufunc(_resample_dask, x, indices, weights, out_valid,
                                        input_core_dims=[x.dims[-1:], ['neighbours'], ['neighbours'], []],
-                                       output_dtypes=[np.float32],
+                                       output_dtypes=[x.dtype],
                                        dask='parallelized', keep_attrs=True)
         resampled.attrs = x.attrs
         return resampled
