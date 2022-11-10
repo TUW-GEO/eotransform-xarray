@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict, field
-from typing import Tuple, Union, Literal
+from typing import Tuple, Union, Literal, Mapping, Any
 
 import numpy as np
 import rioxarray  # noqa # pylint: disable=unused-import
@@ -82,10 +82,10 @@ class StorageIntoTheVoid(Storage):
     def exists(self) -> bool:
         return False
 
-    def load(self) -> Dataset:
+    def load(self) -> Mapping[str, Any]:
         raise NotImplementedError("Can't load from the void.")
 
-    def save(self, data: Dataset) -> None:
+    def save(self, data: Mapping[str, Any]) -> None:
         pass
 
 
