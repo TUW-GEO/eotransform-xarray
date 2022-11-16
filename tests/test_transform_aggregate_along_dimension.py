@@ -22,3 +22,18 @@ def test_aggregate_pearson_r_along_first_dimension():
 
 def make_randn_ts(shape, scale=1.0, bias=0):
     return (np.random.randn(*shape) * scale + bias).astype(np.float32)
+
+
+def test_aggregate_passes_along_kwargs():
+    correlate = AggregateAlongDim(dim=0, aggregate=pearsonr, output=[AggregationOutput([('stats', 3)], float)],
+                                  kwargs={'min_obs': 100})
+
+    random_array = make_randn_ts((200, 2, 2), scale=1.0, bias=10)
+    source = make_raster(random_array)
+    source.values[:50, 0, 0] = np.nan
+
+    target = make_raster((random_array + make_randn_ts((200, 2, 2), scale=0.1, bias=100)) * -1)
+    target.values[50:100, 0, 0] = np.nan
+    r = correlate((source, target))
+    assert np.isnan(r.values[0, 0, 0])
+    assert r.values[0, 1, 1] <= -0.9
