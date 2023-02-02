@@ -17,6 +17,12 @@ class Engine(Enum):
 
 
 class NormalizeSig0ToRefLiaBySlope(TransformerOfDataArray):
+    class MissingLiaError(KeyError):
+        ...
+
+    class MissingOrbitInfoError(RuntimeError):
+        ...
+
     def __init__(self, slope: DataArray, lias_per_orbit: Dict[str, DataArray], reference_lia: Degree,
                  engine: Optional[Engine] = Engine.DASK):
         self._slope = slope
@@ -25,7 +31,13 @@ class NormalizeSig0ToRefLiaBySlope(TransformerOfDataArray):
         self._engine = engine
 
     def __call__(self, x: DataArray) -> DataArray:
-        lia = self._lias_per_orbit[x.attrs[ORBIT_KEY]]
+        if ORBIT_KEY not in x.attrs:
+            raise self.MissingOrbitInfoError(f"The input array doesn't have orbit information it its attrs: {x.attrs}")
+        orbit = x.attrs[ORBIT_KEY]
+        if orbit not in self._lias_per_orbit:
+            raise self.MissingLiaError(f"No LIA map found for orbit {orbit}.")
+
+        lia = self._lias_per_orbit[orbit]
         if self._engine == Engine.DASK:
             return x - self._slope * (lia - self._reference_lia.value)
         if self._engine == Engine.NUMBA:
