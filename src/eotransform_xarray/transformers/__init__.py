@@ -11,6 +11,10 @@ class TransformerOfDataArray(Transformer[DataArray, DataArray], ABC):
     ...
 
 
+class TransformerOfDataset(Transformer[Dataset, Dataset], ABC):
+    ...
+
+
 class TransformerOfXArrayData(Transformer[XArrayData, XArrayData], ABC):
     ...
 
