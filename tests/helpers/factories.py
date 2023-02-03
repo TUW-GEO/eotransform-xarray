@@ -7,13 +7,15 @@ from geopathfinder.naming_conventions.yeoda_naming import YeodaFilename
 from xarray import DataArray, Dataset
 
 
-def make_raster(values, name=None, dims=None, coords=None, attrs=None, encoding=None):
+def make_raster(values, name=None, dims=None, coords=None, attrs=None, encoding=None, add_coords=None):
     values = _ensure_band_dimension(values)
     dims = dims or ['band', 'y', 'x']
     coords = coords or dict(band=np.arange(values.shape[0]) + 1,
                             y=np.arange(values.shape[1]),
                             x=np.arange(values.shape[2]),
                             spatial_ref=0)
+    add_coords = add_coords or {}
+    coords = {**coords, **add_coords}
     array = DataArray(values, dims=dims, coords=coords)
     if attrs:
         array.attrs = attrs

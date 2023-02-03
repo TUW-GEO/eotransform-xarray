@@ -10,7 +10,7 @@ from eotransform_xarray.geometry.degrees import Degree
 from eotransform_xarray.numba_engine.normalize_sig0_to_ref_lia_by_slope import normalize_numba
 from eotransform_xarray.transformers import TransformerOfDataArray
 
-ORBIT_KEY = 'orbit'
+ORBIT_COORD = 'orbit'
 METADATA_KEY = 'normalize_sig0_to_ref_lia_by_slope_meta'
 SLOPE_SRC_KEY = 'slope_source'
 LIA_SRC_KEY = 'lia_source'
@@ -31,7 +31,7 @@ class NormalizeSig0ToRefLiaBySlope(TransformerOfDataArray):
     class MissingOrbitInfoError(RuntimeError):
         ...
 
-    def __init__(self, slope: DataArray, lias_per_orbit: Dict[str, DataArray], reference_lia: Degree,
+    def __init__(self, slope: DataArray, lias_per_orbit: DataArray, reference_lia: Degree,
                  engine: Optional[Engine] = Engine.DASK):
         self._slope = slope
         self._lias_per_orbit = lias_per_orbit
@@ -39,13 +39,14 @@ class NormalizeSig0ToRefLiaBySlope(TransformerOfDataArray):
         self._engine = engine
 
     def __call__(self, x: DataArray) -> DataArray:
-        if ORBIT_KEY not in x.attrs:
+        if ORBIT_COORD not in x.coords:
             raise self.MissingOrbitInfoError(f"The input array doesn't have orbit information it its attrs: {x.attrs}")
-        orbit = x.attrs[ORBIT_KEY]
-        if orbit not in self._lias_per_orbit:
-            raise self.MissingLiaError(f"No LIA map found for orbit {orbit}.")
+        orbit = x.coords[ORBIT_COORD].values.item()
+        if orbit not in self._lias_per_orbit.coords[ORBIT_COORD]:
+            raise self.MissingLiaError(
+                f"No LIA map found for orbit {orbit}, available orbits are {self._lias_per_orbit.coords[ORBIT_COORD]}")
 
-        lia = self._lias_per_orbit[orbit]
+        lia = self._lias_per_orbit.sel({ORBIT_COORD: orbit})
         if self._engine == Engine.DASK:
             nx = x - self._slope * (lia - self._reference_lia.value)
         elif self._engine == Engine.NUMBA:
