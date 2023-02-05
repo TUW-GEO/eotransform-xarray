@@ -38,10 +38,10 @@ def iota_arrays(start, periods, shape):
         yield np.full(shape, i)
 
 
-def generate_yeoda_geo_tiffs(root, date_range, arrays):
+def generate_yeoda_geo_tiffs(root, date_range, arrays, attrs=None):
     for i, (date, array) in enumerate(zip(date_range, arrays)):
         yeoda_name = YeodaFilename(dict(datetime_1=date))
-        da = make_raster(array, name=f"iota_{i}", attrs=dict(light_direction=[1, 1, 1]))
+        da = make_raster(array, name=f"iota_{i}", attrs=attrs)
         da.rio.to_raster(root / str(yeoda_name))
 
     return gather_files(root, yeoda_naming_convention, index='datetime_1')
