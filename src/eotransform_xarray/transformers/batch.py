@@ -2,8 +2,8 @@ from typing import Sequence
 
 from eotransform.protocol.transformer import Transformer
 
+from eotransform_xarray.functional.load_file_dataframe_to_array import CONCATED_ATTRS_KEY
 from eotransform_xarray.transformers import XArrayData
-from eotransform_xarray.transformers.files_to_xarray import CONCATED_ATTRS_KEY
 
 BATCHED_ATTRS_KEY = 'batched_attrs'
 

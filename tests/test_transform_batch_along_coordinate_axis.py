@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
+from eotransform_xarray.functional.load_file_dataframe_to_array import CONCATED_ATTRS_KEY
 from eotransform_xarray.transformers.batch import BATCHED_ATTRS_KEY, Batch
-from eotransform_xarray.transformers.files_to_xarray import CONCATED_ATTRS_KEY
 from factories import make_raster
 
 
