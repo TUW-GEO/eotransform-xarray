@@ -32,8 +32,10 @@ def load_file_dataframe_to_array(x: DataFrame,
                                  registered_attribute_parsers: Optional[Dict[str, Parser]] = None,
                                  open_rasterio_kwargs: Optional[Dict] = None,
                                  rasterio_open_kwargs: Optional[Dict] = None) -> DataArray:
-    index_name = x.index.name
     tags_parser = PredicatedTagsParser(registered_attribute_parsers or {})
+    open_rasterio_kwargs = open_rasterio_kwargs or {}
+    rasterio_open_kwargs = rasterio_open_kwargs or {}
+    index_name = x.index.name
     arrays = [_to_data_array(row, index, index_name, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs)
               for index, row in x.iterrows()]
     return xr.concat(arrays, dim=index_name, combine_attrs=_concat_attrs_with_key(CONCATED_ATTRS_KEY))
