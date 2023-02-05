@@ -11,7 +11,8 @@ from eotransform_pandas.transformers.group_by_n import GroupColumnByN
 from xarray import DataArray
 
 from assertions import assert_memory_ratio, assert_data_array_identical
-from eotransform_xarray.functional.load_file_dataframe_to_array import CONCATED_ATTRS_KEY, BAND_ATTRS_KEY, TAGS_KEY
+from eotransform_xarray.functional.load_file_dataframe_to_array import CONCATED_ATTRS_KEY, BAND_ATTRS_KEY
+from eotransform_xarray.functional.load_tif import TAGS_KEY
 from eotransform_xarray.transformers.files_to_xarray import FileDataFrameToDataArray
 from factories import make_raster, iota_arrays, generate_yeoda_geo_tiffs
 from utils import force_loading, consume
@@ -39,7 +40,7 @@ def rioxarray_rasterio_open_spy(monkeypatch):
 
 @pytest.fixture
 def rasterio_open_spy(monkeypatch):
-    from eotransform_xarray.functional.load_file_dataframe_to_array import rasterio
+    from eotransform_xarray.functional.load_tif import rasterio
     with monkeypatch.context() as m:
         spy = FunctionSpy(rasterio.open)
         m.setattr(rasterio, "open", spy)

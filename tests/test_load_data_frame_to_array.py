@@ -5,8 +5,8 @@ import pandas as pd
 from xarray import DataArray
 
 from assertions import assert_data_array_identical
-from eotransform_xarray.functional.load_file_dataframe_to_array import load_file_dataframe_to_array, CONCATED_ATTRS_KEY, \
-    TAGS_KEY, LEGACY_SCALE_FACTOR_KEYS
+from eotransform_xarray.functional.load_file_dataframe_to_array import load_file_dataframe_to_array, CONCATED_ATTRS_KEY
+from eotransform_xarray.functional.load_tif import TAGS_KEY, LEGACY_SCALE_FACTOR_KEYS
 from factories import iota_arrays, generate_yeoda_geo_tiffs, make_raster
 
 

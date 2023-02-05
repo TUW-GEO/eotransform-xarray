@@ -1,34 +1,16 @@
 from pathlib import Path
-from typing import Callable, Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
-import rasterio
-import rioxarray
 import xarray as xr
-from eotransform.collection_transformation import transform_all_dict_elems
-from eotransform.protocol.transformer import PredicatedTransformer
 from pandas import DataFrame, Series
 
 from xarray import DataArray
 
+from eotransform_xarray.functional.load_tif import Parser, PredicatedTagsParser, load_tif
+
 CONCATED_ATTRS_KEY = 'concated_attrs'
 BAND_ATTRS_KEY = 'band_attrs'
-TAGS_KEY = 'tags'
-LEGACY_SCALE_FACTOR_KEYS = {"scale_factor", "Scale_factor"}
-SCALE_FACTOR_KEY = "scale_factor"
-
-Parser = Callable[[str], Any]
-
-
-class PredicatedTagsParser(PredicatedTransformer[Any, Any, Any]):
-    def __init__(self, attribute_parsers: Dict[str, Parser]):
-        self._attribute_parsers = attribute_parsers
-
-    def is_applicable(self, k: Any) -> bool:
-        return k in self._attribute_parsers
-
-    def apply(self, k: Any, x: Any) -> Any:
-        return self._attribute_parsers[k](x)
 
 
 def load_file_dataframe_to_array(x: DataFrame,
@@ -60,7 +42,7 @@ def _to_data_array(row: Series, index: Any, index_name: str, tags_parser: Predic
 
 def _read_geo_tiff(tif: Path, index: Any, index_name: str, tags_parser: PredicatedTagsParser,
                    rasterio_open_kwargs: Dict, open_rasterio_kwargs: Dict, allow_legacy_scaling: bool) -> DataArray:
-    array = _read_array_from_tif(tif, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs, allow_legacy_scaling)
+    array = load_tif(tif, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs, allow_legacy_scaling)
     return array.expand_dims(index_name).assign_coords({index_name: (index_name, [index]),
                                                         "filepath": (index_name, [tif])})
 
@@ -68,7 +50,7 @@ def _read_geo_tiff(tif: Path, index: Any, index_name: str, tags_parser: Predicat
 def _read_multi_band_geo_tiffs(tiffs: Sequence[Path], index: Any, index_name: str,
                                tags_parser: PredicatedTagsParser, rasterio_open_kwargs: Dict,
                                open_rasterio_kwargs: Dict, allow_legacy_scaling: bool) -> DataArray:
-    arrays = [_read_array_from_tif(t, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs, allow_legacy_scaling)
+    arrays = [load_tif(t, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs, allow_legacy_scaling)
               for t in tiffs]
     array = xr.concat(arrays, dim='band', combine_attrs=_concat_attrs_with_key(BAND_ATTRS_KEY))
     tiff_array = np.empty((1,), dtype=np.object)
@@ -79,28 +61,3 @@ def _read_multi_band_geo_tiffs(tiffs: Sequence[Path], index: Any, index_name: st
 
 def _concat_attrs_with_key(key: str):
     return lambda attrs, context: {key: attrs}
-
-
-def _read_array_from_tif(tif, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs, allow_legacy_scaling):
-    with rasterio.open(tif, **rasterio_open_kwargs) as rds:
-        array = rioxarray.open_rasterio(rds, **open_rasterio_kwargs)
-        tags = transform_all_dict_elems(rds.tags(), tags_parser)
-        array.attrs[TAGS_KEY] = tags
-
-    if allow_legacy_scaling:
-        if _is_loaded_from_legacy_file_format(array):
-            array.encoding[SCALE_FACTOR_KEY] = 1 / get_legacy_scale_factor(array.attrs[TAGS_KEY])
-            array = array * array.encoding[SCALE_FACTOR_KEY]
-    return array
-
-
-def _is_loaded_from_legacy_file_format(array: DataArray) -> bool:
-    return len(LEGACY_SCALE_FACTOR_KEYS.intersection(array.attrs[TAGS_KEY].keys())) == 1 \
-        and (SCALE_FACTOR_KEY not in array.encoding or array.encoding[SCALE_FACTOR_KEY] == 1.0)
-
-
-def get_legacy_scale_factor(tags: Dict) -> float:
-    for key in LEGACY_SCALE_FACTOR_KEYS:
-        if key in tags:
-            return float(tags[key])
-    raise AssertionError(f"Legacy scale factor keys {LEGACY_SCALE_FACTOR_KEYS} not found in {tags}.")

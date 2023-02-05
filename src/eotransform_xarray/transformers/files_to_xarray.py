@@ -4,7 +4,8 @@ from eotransform.protocol.transformer import Transformer
 from pandas import DataFrame
 from xarray import DataArray
 
-from eotransform_xarray.functional.load_file_dataframe_to_array import Parser, load_file_dataframe_to_array
+from eotransform_xarray.functional.load_file_dataframe_to_array import load_file_dataframe_to_array
+from eotransform_xarray.functional.load_tif import Parser
 
 
 class FileDataFrameToDataArray(Transformer[DataFrame, DataArray]):
