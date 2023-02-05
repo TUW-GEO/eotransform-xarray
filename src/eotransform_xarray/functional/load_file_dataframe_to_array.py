@@ -11,6 +11,7 @@ from eotransform_xarray.functional.load_tif import Parser, PredicatedTagsParser,
 
 CONCATED_ATTRS_KEY = 'concated_attrs'
 BAND_ATTRS_KEY = 'band_attrs'
+FILEPATH_COORD = 'filepath'
 
 
 def load_file_dataframe_to_array(x: DataFrame,
@@ -44,7 +45,7 @@ def _read_geo_tiff(tif: Path, index: Any, index_name: str, tags_parser: Predicat
                    rasterio_open_kwargs: Dict, open_rasterio_kwargs: Dict, allow_legacy_scaling: bool) -> DataArray:
     array = load_tif(tif, tags_parser, rasterio_open_kwargs, open_rasterio_kwargs, allow_legacy_scaling)
     return array.expand_dims(index_name).assign_coords({index_name: (index_name, [index]),
-                                                        "filepath": (index_name, [tif])})
+                                                        FILEPATH_COORD: (index_name, [tif])})
 
 
 def _read_multi_band_geo_tiffs(tiffs: Sequence[Path], index: Any, index_name: str,

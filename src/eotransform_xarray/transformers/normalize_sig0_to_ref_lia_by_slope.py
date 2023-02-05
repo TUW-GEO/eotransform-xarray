@@ -1,11 +1,13 @@
 from copy import copy
 from enum import Enum, auto
+from pathlib import Path
 from typing import Optional, Dict
 
 import numpy as np
 from xarray import DataArray
 
 from eotransform_xarray.constants import SOURCE_KEY
+from eotransform_xarray.functional.load_file_dataframe_to_array import FILEPATH_COORD
 from eotransform_xarray.geometry.degrees import Degree
 from eotransform_xarray.numba_engine.normalize_sig0_to_ref_lia_by_slope import normalize_numba
 from eotransform_xarray.transformers import TransformerOfDataArray
@@ -62,11 +64,19 @@ class NormalizeSig0ToRefLiaBySlope(TransformerOfDataArray):
     def _populate_with_normalize_metadata(self, normalized: DataArray, sig0: DataArray, lia: DataArray) -> DataArray:
         normalized.attrs = copy(sig0.attrs)
         normalized.attrs[METADATA_KEY] = {
-            SLOPE_SRC_KEY: self._slope.encoding.get(SOURCE_KEY),
-            LIA_SRC_KEY: lia.encoding.get(SOURCE_KEY),
-            SIG0_SRC_KEY: sig0.encoding.get(SOURCE_KEY),
+            SLOPE_SRC_KEY: _try_get_filepath_for_array(self._slope),
+            LIA_SRC_KEY: _try_get_filepath_for_array(lia),
+            SIG0_SRC_KEY: _try_get_filepath_for_array(sig0),
             REF_ANGLE_KEY: self._reference_lia.value,
             ENGINE_USED_KEY: self._engine.name
         }
 
         return normalized
+
+
+def _try_get_filepath_for_array(a: DataArray) -> str:
+    if FILEPATH_COORD in a.coords:
+        return str(a.coords[FILEPATH_COORD].values.item())
+    else:
+        return a.encoding.get(SOURCE_KEY,
+                              f"source definition missing, either encoding['source'] or as {FILEPATH_COORD} coords.")
