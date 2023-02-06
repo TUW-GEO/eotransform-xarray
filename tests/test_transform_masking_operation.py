@@ -56,3 +56,18 @@ def test_mask_with_bool_dataset():
             b=make_raster([[42, 42],
                            [0, 1]])
         )))
+
+
+def test_mask_with_bool_data_array_and_invert():
+    masking = MaskWhere(make_raster([[False, True],
+                                     [True, False]]), np.nan, invert=True)
+    assert_data_array_identical(masking(make_raster([[0, 1],
+                                                     [1, 0]])), make_raster([[0, np.nan],
+                                                                             [np.nan, 0]]))
+
+
+def test_invert_callable_predicate():
+    masking = MaskWhere(lambda p: p < 1, 42, invert=True)
+    assert_data_array_identical(masking(make_raster([[0, 1],
+                                                     [1, 0]])), make_raster([[42, 1],
+                                                                             [1, 42]]))
