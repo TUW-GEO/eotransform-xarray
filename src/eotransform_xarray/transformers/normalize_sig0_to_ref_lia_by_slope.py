@@ -42,7 +42,8 @@ class NormalizeSig0ToRefLiaBySlope(TransformerOfDataArray):
 
     def __call__(self, x: DataArray) -> DataArray:
         if ORBIT_COORD not in x.coords:
-            raise self.MissingOrbitInfoError(f"The input array doesn't have orbit information it its attrs: {x.attrs}")
+            raise self.MissingOrbitInfoError(
+                f"The input array doesn't have orbit information it its coords: {x.coords}")
         orbit = x.coords[ORBIT_COORD].values.item()
         if orbit not in self._lias_per_orbit.coords[ORBIT_COORD]:
             raise self.MissingLiaError(
