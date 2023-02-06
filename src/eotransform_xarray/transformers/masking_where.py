@@ -1,5 +1,6 @@
 from typing import Union, Callable, Any
 
+import numpy as np
 from xarray import DataArray, Dataset
 
 from eotransform_xarray.transformers import TransformerOfXArrayData, XArrayData
@@ -22,4 +23,4 @@ class MaskWhere(TransformerOfXArrayData):
 def _not(predicate: MaskingSource) -> MaskingSource:
     if callable(predicate):
         return lambda v: ~predicate(v)
-    return ~predicate
+    return ~(predicate.astype(np.bool))

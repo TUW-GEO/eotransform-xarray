@@ -59,8 +59,8 @@ def test_mask_with_bool_dataset():
 
 
 def test_mask_with_bool_data_array_and_invert():
-    masking = MaskWhere(make_raster([[False, True],
-                                     [True, False]]), np.nan, invert=True)
+    masking = MaskWhere(make_raster([[0, 1],
+                                     [1, 0]]), np.nan, invert=True)
     assert_data_array_identical(masking(make_raster([[0, 1],
                                                      [1, 0]])), make_raster([[0, np.nan],
                                                                              [np.nan, 0]]))
