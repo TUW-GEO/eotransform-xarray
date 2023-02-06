@@ -23,4 +23,4 @@ class MaskWhere(TransformerOfXArrayData):
 def _not(predicate: MaskingSource) -> MaskingSource:
     if callable(predicate):
         return lambda v: ~predicate(v)
-    return ~(predicate.astype(np.bool))
+    return ~(predicate.astype(np.bool_))
