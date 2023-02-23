@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Any, Dict, Optional
+from typing import Callable, Any, Dict, Optional, Sequence, Set
 
 import rasterio
 import rioxarray
@@ -8,7 +8,7 @@ from eotransform.collection_transformation import transform_all_dict_elems
 from eotransform.protocol.transformer import PredicatedTransformer
 from xarray import DataArray
 
-LEGACY_SCALE_FACTOR_KEYS = {"Scale_factor"}
+LEGACY_SCALE_FACTOR_KEYS = {"scale_factor", "Scale_factor"}
 SCALE_FACTOR_KEY = "scale_factor"
 Parser = Callable[[str], Any]
 
@@ -33,14 +33,16 @@ def load_tif(tif: Path, tags_parser: Optional[PredicatedTagsParser] = None, riox
         array.attrs = transform_all_dict_elems(array.attrs, tags_parser)
 
     if allow_legacy_scaling:
-        if _is_loaded_from_legacy_file_format(array):
-            array.encoding[SCALE_FACTOR_KEY] = 1 / get_legacy_scale_factor(array.attrs)
+        with rasterio.open(tif) as src:
+            all_tags = src.tags()
+        if _is_loaded_from_legacy_file_format(array, all_tags.keys()):
+            array.encoding[SCALE_FACTOR_KEY] = 1 / get_legacy_scale_factor(all_tags)
             array = array * array.encoding[SCALE_FACTOR_KEY]
     return array
 
 
-def _is_loaded_from_legacy_file_format(array: DataArray) -> bool:
-    return len(LEGACY_SCALE_FACTOR_KEYS.intersection(array.attrs.keys())) == 1 \
+def _is_loaded_from_legacy_file_format(array: DataArray, all_array_tags: Set) -> bool:
+    return len(LEGACY_SCALE_FACTOR_KEYS.intersection(all_array_tags)) == 1 \
         and (SCALE_FACTOR_KEY not in array.encoding or array.encoding[SCALE_FACTOR_KEY] == 1.0)
 
 

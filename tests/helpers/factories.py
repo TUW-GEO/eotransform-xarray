@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 import numpy as np
+import rasterio
 from eotransform_pandas.filesystem.gather import gather_files
 from eotransform_pandas.filesystem.naming.geopathfinder_conventions import yeoda_naming_convention
 from geopathfinder.naming_conventions.yeoda_naming import YeodaFilename
@@ -38,11 +39,17 @@ def iota_arrays(start, periods, shape):
         yield np.full(shape, i)
 
 
-def generate_yeoda_geo_tiffs(root, date_range, arrays, attrs=None):
+def generate_yeoda_geo_tiffs(root, date_range, arrays, attrs=None, legacy=False):
     for i, (date, array) in enumerate(zip(date_range, arrays)):
         yeoda_name = YeodaFilename(dict(datetime_1=date))
         da = make_raster(array, name=f"iota_{i}", attrs=attrs)
-        da.rio.to_raster(root / str(yeoda_name))
+        if legacy:
+            with rasterio.open(root / str(yeoda_name), 'w', 'GTiff', da.shape[1], da.shape[2], da.shape[0], da.rio.crs,
+                               da.rio.transform(), da.dtype, da.rio.nodata) as dst:
+                dst.write(da.values[0], 1)
+                dst.update_tags(**da.attrs)
+        else:
+            da.rio.to_raster(root / str(yeoda_name))
 
     return gather_files(root, yeoda_naming_convention, index='datetime_1')
 

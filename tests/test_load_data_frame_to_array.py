@@ -2,6 +2,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+import pytest
 from xarray import DataArray
 
 from assertions import assert_data_array_identical
@@ -33,8 +34,10 @@ def test_loads_data_frame_according_to_index(tmp_path):
         ]}))
 
 
-def test_load_arrays_with_legacy_meta_data(tmp_path):
+@pytest.mark.parametrize('legacy_scale_factor', [
+    {'Scale_factor': '100'}, {'scale_factor': '100'}])
+def test_load_arrays_with_legacy_meta_data(tmp_path, legacy_scale_factor):
     geo_tiffs = generate_yeoda_geo_tiffs(tmp_path, [datetime(2015, 1, 1, 12, 30, 42)], [[[10]]],
-                                         attrs={'Scale_factor': '100'})
+                                         attrs=legacy_scale_factor, legacy=True)
     scaled_value = load_file_dataframe_to_array(geo_tiffs, allow_legacy_scaling=True).squeeze().values.item()
     assert scaled_value == 0.1
