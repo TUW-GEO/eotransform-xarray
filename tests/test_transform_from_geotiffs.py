@@ -12,7 +12,6 @@ from xarray import DataArray
 
 from assertions import assert_memory_ratio, assert_data_array_identical
 from eotransform_xarray.functional.load_file_dataframe_to_array import CONCATED_ATTRS_KEY, BAND_ATTRS_KEY
-from eotransform_xarray.functional.load_tif import TAGS_KEY
 from eotransform_xarray.transformers.files_to_xarray import FileDataFrameToDataArray
 from factories import make_raster, iota_arrays, generate_yeoda_geo_tiffs
 from utils import force_loading, consume
@@ -67,8 +66,8 @@ def test_stack_geo_tif_file_dataset_based_on_index(tmp_path):
             spatial_ref=DataArray(0, attrs=dict(GeoTransform="-0.5 1.0 0.0 -0.5 0.0 1.0"))
         ),
         attrs={CONCATED_ATTRS_KEY: [
-            {'long_name': "iota_0", 'scale_factor': 1.0, 'add_offset': 0.0, TAGS_KEY: {'light_direction': [1, 1, 1]}},
-            {'long_name': "iota_1", 'scale_factor': 1.0, 'add_offset': 0.0, TAGS_KEY: {'light_direction': [1, 1, 1]}},
+            {'long_name': "iota_0", 'scale_factor': 1.0, 'add_offset': 0.0, 'light_direction': [1, 1, 1]},
+            {'long_name': "iota_1", 'scale_factor': 1.0, 'add_offset': 0.0, 'light_direction': [1, 1, 1]},
         ]}))
 
 
@@ -105,16 +104,12 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
         ),
         attrs={CONCATED_ATTRS_KEY: [
             {BAND_ATTRS_KEY: [
-                {'long_name': "iota_0", 'scale_factor': 1.0, 'add_offset': 0.0,
-                 TAGS_KEY: {'light_direction': [1, 1, 1]}},
-                {'long_name': "iota_1", 'scale_factor': 1.0, 'add_offset': 0.0,
-                 TAGS_KEY: {'light_direction': [1, 1, 1]}},
+                {'long_name': "iota_0", 'scale_factor': 1.0, 'add_offset': 0.0, 'light_direction': [1, 1, 1]},
+                {'long_name': "iota_1", 'scale_factor': 1.0, 'add_offset': 0.0, 'light_direction': [1, 1, 1]},
             ]},
             {BAND_ATTRS_KEY: [
-                {'long_name': "iota_2", 'scale_factor': 1.0, 'add_offset': 0.0,
-                 TAGS_KEY: {'light_direction': [1, 1, 1]}},
-                {'long_name': "iota_3", 'scale_factor': 1.0, 'add_offset': 0.0,
-                 TAGS_KEY: {'light_direction': [1, 1, 1]}},
+                {'long_name': "iota_2", 'scale_factor': 1.0, 'add_offset': 0.0, 'light_direction': [1, 1, 1]},
+                {'long_name': "iota_3", 'scale_factor': 1.0, 'add_offset': 0.0, 'light_direction': [1, 1, 1]},
             ]}
         ]}))
 

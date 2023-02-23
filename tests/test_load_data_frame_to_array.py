@@ -6,7 +6,6 @@ from xarray import DataArray
 
 from assertions import assert_data_array_identical
 from eotransform_xarray.functional.load_file_dataframe_to_array import load_file_dataframe_to_array, CONCATED_ATTRS_KEY
-from eotransform_xarray.functional.load_tif import TAGS_KEY, LEGACY_SCALE_FACTOR_KEYS
 from factories import iota_arrays, generate_yeoda_geo_tiffs, make_raster
 
 
@@ -29,8 +28,8 @@ def test_loads_data_frame_according_to_index(tmp_path):
             spatial_ref=DataArray(0, attrs=dict(GeoTransform="-0.5 1.0 0.0 -0.5 0.0 1.0"))
         ),
         attrs={CONCATED_ATTRS_KEY: [
-            {'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': "iota_0", TAGS_KEY: {}},
-            {'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': "iota_1", TAGS_KEY: {}}
+            {'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': "iota_0"},
+            {'scale_factor': 1.0, 'add_offset': 0.0, 'long_name': "iota_1"}
         ]}))
 
 
