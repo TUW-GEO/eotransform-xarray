@@ -10,12 +10,9 @@ from eotransform_xarray.functional.load_tif import Parser
 
 class FileDataFrameToDataArray(Transformer[DataFrame, DataArray]):
     def __init__(self, registered_attribute_parsers: Optional[Dict[str, Parser]] = None,
-                 open_rasterio_kwargs: Optional[Dict] = None,
-                 rasterio_open_kwargs: Optional[Dict] = None):
+                 rioxarray_kwargs: Optional[Dict] = None):
         self._registered_attribute_parsers = registered_attribute_parsers
-        self._open_rasterio_kwargs = open_rasterio_kwargs or {}
-        self._rasterio_open_kwargs = rasterio_open_kwargs or {}
+        self._rioxarray_kwargs = rioxarray_kwargs or {}
 
     def __call__(self, x: DataFrame) -> DataArray:
-        return load_file_dataframe_to_array(x, self._registered_attribute_parsers, self._open_rasterio_kwargs,
-                                            self._rasterio_open_kwargs)
+        return load_file_dataframe_to_array(x, self._registered_attribute_parsers, self._rioxarray_kwargs)

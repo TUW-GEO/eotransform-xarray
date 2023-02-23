@@ -24,16 +24,13 @@ class PredicatedTagsParser(PredicatedTransformer[Any, Any, Any]):
         return self._attribute_parsers[k](x)
 
 
-def load_tif(tif: Path, tags_parser: Optional[PredicatedTagsParser] = None, rasterio_open_kwargs: Optional[Dict] = None,
-             open_rasterio_kwargs: Optional[Dict] = None, allow_legacy_scaling: Optional[bool] = False):
-    rasterio_open_kwargs = rasterio_open_kwargs or {}
+def load_tif(tif: Path, tags_parser: Optional[PredicatedTagsParser] = None, rioxarray_kwargs: Optional[Dict] = None,
+             allow_legacy_scaling: Optional[bool] = False):
+    rioxarray_kwargs = rioxarray_kwargs or {}
 
-    with rasterio.open(tif, **rasterio_open_kwargs) as rds:
-        array = rioxarray.open_rasterio(rds, **open_rasterio_kwargs)
-        tags = rds.tags()
-        if tags_parser is not None:
-            tags = transform_all_dict_elems(tags, tags_parser)
-        array.attrs = {**array.attrs, **tags}
+    array = rioxarray.open_rasterio(tif, **rioxarray_kwargs)
+    if tags_parser is not None:
+        array.attrs = transform_all_dict_elems(array.attrs, tags_parser)
 
     if allow_legacy_scaling:
         if _is_loaded_from_legacy_file_format(array):
