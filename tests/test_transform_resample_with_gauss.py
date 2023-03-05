@@ -24,7 +24,11 @@ DEFAULT_TEST_PROJECTION = "+proj=aeqd +lat_0=53 +lon_0=24 +x_0=5837287.81977 +y_
 
 @pytest.fixture(params=["numba", DaskConfig((200, 200))])
 def processing_config(request):
-    return ProcessingConfig(resampling_engine=request.param)
+    engine = request.param
+    loading = dict(scheduler='single-threaded') if engine == 'numba' else None
+    return ProcessingConfig(resampling_engine=engine,
+                            load_in_resampling_params=loading,
+                            load_out_resampling_params=loading)
 
 
 @pytest.fixture

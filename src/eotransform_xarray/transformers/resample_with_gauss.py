@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict, field
-from typing import Tuple, Union, Literal, Mapping, Any, Optional
+from typing import Tuple, Union, Literal, Mapping, Any, Optional, Dict
 
 import numpy as np
 import rioxarray  # noqa # pylint: disable=unused-import
@@ -98,7 +98,9 @@ class DaskConfig:
 class ProcessingConfig:
     num_parameter_calc_procs: int = 1
     parameter_storage: Storage = field(default_factory=StorageIntoTheVoid)
-    resampling_engine: Union[Literal['numba'], DaskConfig] = 'numba'
+    resampling_engine: Optional[Union[Literal['numba'], DaskConfig]] = 'numba'
+    load_in_resampling_params: Optional[Dict] = None
+    load_out_resampling_params: Optional[Dict] = None
 
 
 class ResampleWithGauss(TransformerOfDataArray):
@@ -114,6 +116,14 @@ class ResampleWithGauss(TransformerOfDataArray):
         else:
             self._projection_params = self._calc_projection(swath_src, area_dst, neighbours, lookup_radius)
             self._projection_params.store(self._proc_cfg.parameter_storage)
+
+        if self._proc_cfg.load_in_resampling_params is not None:
+            self._projection_params.in_resampling = self._projection_params.in_resampling.load(
+                **self._proc_cfg.load_in_resampling_params)
+        if self._proc_cfg.load_out_resampling_params is not None:
+            self._projection_params.out_resampling = self._projection_params.out_resampling.load(
+                **self._proc_cfg.load_out_resampling_params)
+
         self._projection_params.out_resampling['weights'] = \
             self._distances_to_gauss_weights(self._projection_params.out_resampling['weights'], sigma)
 
