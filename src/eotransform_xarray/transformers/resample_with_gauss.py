@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from dataclasses import dataclass, asdict, field
 from typing import Tuple, Union, Literal, Mapping, Any, Optional, Dict
 
@@ -20,6 +21,8 @@ except ImportError:
     raise
 
 from eotransform_xarray.transformers import TransformerOfDataArray
+
+EngineType = Literal['dask', 'numba']
 
 
 @dataclass
@@ -90,12 +93,33 @@ class StorageIntoTheVoid(Storage):
         pass
 
 
+class EngineConfig(YAMLObject):
+    @property
+    @abstractmethod
+    def type(self) -> EngineType:
+        ...
+
+
 @dataclass
-class DaskConfig(YAMLObject):
+class DaskConfig(EngineConfig):
     yaml_tag = "!ResampleDaskConfig"
     yaml_loader = SafeLoader
 
     raster_chunk_sizes: Tuple[int, int]
+
+    @property
+    def type(self) -> EngineType:
+        return "dask"
+
+
+@dataclass
+class NumbaConfig(EngineConfig):
+    yaml_tag = "!ResampleNumbaConfig"
+    yaml_loader = SafeLoader
+
+    @property
+    def type(self) -> EngineType:
+        return "numba"
 
 
 @dataclass
@@ -106,7 +130,7 @@ class ProcessingConfig(YAMLObject):
     num_parameter_calc_procs: int = 1
     num_lookup_segments: Optional[int] = None
     parameter_storage: Storage = field(default_factory=StorageIntoTheVoid)
-    resampling_engine: Optional[Union[Literal['numba'], DaskConfig]] = 'numba'
+    resampling_engine: Optional[Union[NumbaConfig, DaskConfig]] = field(default_factory=NumbaConfig)
     load_in_resampling_params: Optional[Dict] = None
     load_out_resampling_params: Optional[Dict] = None
 
@@ -155,7 +179,7 @@ class ResampleWithGauss(TransformerOfDataArray):
                                   'mask': (('y', 'x', 'cell'), out_mask)}) \
             .rio.write_crs(area.projection).rio.write_transform(area.transform)
 
-        if self._proc_cfg.resampling_engine == 'numba':
+        if self._proc_cfg.resampling_engine.type == 'numba':
             out_resampling = out_resampling.chunk({'neighbours': -1, 'cell': -1, 'y': -1, 'x': -1})
         else:
             rc = self._proc_cfg.resampling_engine.raster_chunk_sizes
@@ -163,7 +187,7 @@ class ResampleWithGauss(TransformerOfDataArray):
         return ProjectionParameter(in_resampling, out_resampling)
 
     def _distances_to_gauss_weights(self, distances: DataArray, sigma: float) -> DataArray:
-        if self._proc_cfg.resampling_engine == 'numba':
+        if self._proc_cfg.resampling_engine.type == 'numba':
             distances.values = _distance_to_gauss_weight(distances.values, sigma ** 2)
             return distances
         else:

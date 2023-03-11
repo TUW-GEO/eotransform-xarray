@@ -14,7 +14,7 @@ from xarray import DataArray
 
 from eotransform_xarray.storage.storage_using_zarr import StorageUsingZarr
 from eotransform_xarray.transformers.resample_with_gauss import Swath, Extent, Area, ResampleWithGauss, \
-    ProjectionParameter, ProcessingConfig, DaskConfig
+    ProjectionParameter, ProcessingConfig, DaskConfig, NumbaConfig
 from helpers.assertions import assert_data_array_eq
 
 DEFAULT_TEST_EXTENT = Extent(4800000, 1200000, 5400000, 1800000)
@@ -22,7 +22,7 @@ DEFAULT_TEST_TRANSFORM = Affine.from_gdal(4800000, 3000, 0, 1800000, 0, 3000)
 DEFAULT_TEST_PROJECTION = "+proj=aeqd +lat_0=53 +lon_0=24 +x_0=5837287.81977 +y_0=2121415.69617 +datum=WGS84 +units=m +no_defs"
 
 
-@pytest.fixture(params=["numba", DaskConfig((200, 200))])
+@pytest.fixture(params=[NumbaConfig(), DaskConfig((200, 200))])
 def processing_config(request):
     engine = request.param
     loading = dict(scheduler='single-threaded') if engine == 'numba' else None
@@ -31,12 +31,10 @@ def processing_config(request):
                             load_in_resampling_params=loading,
                             load_out_resampling_params=loading)
 
+
 @pytest.fixture
-def engine_name(processing_config):
-    if processing_config.resampling_engine == 'numba':
-        return 'numba'
-    else:
-        return 'dask'
+def engine_type(processing_config):
+    return processing_config.resampling_engine.type
 
 
 @pytest.fixture
@@ -51,7 +49,7 @@ def verify_raster(verify_geo_tif_with_namer, tmp_path_factory):
     return _verify_fn
 
 
-def test_resample_raster_using_gauss_interpolation(verify_raster, processing_config, engine_name):
+def test_resample_raster_using_gauss_interpolation(verify_raster, processing_config, engine_type):
     swath = make_swath([12.0, 16.0], [47.9, 45.2])
     in_data = make_swath_data_array([[[1, 2, 4, 8]], [[1, 2, 4, np.nan]]], swath)
 
@@ -61,7 +59,7 @@ def test_resample_raster_using_gauss_interpolation(verify_raster, processing_con
 
     gather_all_exceptions_and_throw([0, 1], lambda t: verify_raster(
         mask_and_scale(resampled[t]),
-        options=NamerFactory.with_parameters(t, engine_name).for_file.with_extension('.tif')
+        options=NamerFactory.with_parameters(t, engine_type).for_file.with_extension('.tif')
     ))
 
 
