@@ -97,6 +97,7 @@ class DaskConfig:
 @dataclass
 class ProcessingConfig:
     num_parameter_calc_procs: int = 1
+    num_lookup_segments: Optional[int] = None
     parameter_storage: Storage = field(default_factory=StorageIntoTheVoid)
     resampling_engine: Optional[Union[Literal['numba'], DaskConfig]] = 'numba'
     load_in_resampling_params: Optional[Dict] = None
@@ -132,7 +133,8 @@ class ResampleWithGauss(TransformerOfDataArray):
         ar_def = AreaDefinition(area.name, area.description, "proj_id", area.projection, area.columns, area.rows,
                                 area.extent.to_tuple())
         val_in_idc, val_out_idc, idc, distances = get_neighbour_info(sw_def, ar_def, lookup_radius, neighbours,
-                                                                     nprocs=self._proc_cfg.num_parameter_calc_procs)
+                                                                     nprocs=self._proc_cfg.num_parameter_calc_procs,
+                                                                     segments=self._proc_cfg.num_lookup_segments)
         packed_idc = MaybePacked(idc) | np.uint8 | np.uint16 | np.uint32 | np.uint64
         packed_idc = packed_idc.value.reshape((area.rows, area.columns, -1))
         distances = distances.astype(np.float32).reshape((area.rows, area.columns, -1,))
