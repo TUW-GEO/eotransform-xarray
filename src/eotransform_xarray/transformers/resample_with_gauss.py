@@ -7,6 +7,7 @@ import xarray as xr
 from affine import Affine
 from numpy.typing import NDArray, DTypeLike
 from xarray import DataArray, Dataset
+from yaml import YAMLObject, SafeLoader
 
 from eotransform_xarray.storage.storage import Storage
 
@@ -90,12 +91,18 @@ class StorageIntoTheVoid(Storage):
 
 
 @dataclass
-class DaskConfig:
+class DaskConfig(YAMLObject):
+    yaml_tag = "!ResampleDaskConfig"
+    yaml_loader = SafeLoader
+
     raster_chunk_sizes: Tuple[int, int]
 
 
 @dataclass
-class ProcessingConfig:
+class ProcessingConfig(YAMLObject):
+    yaml_tag = "!ResampleProcessing"
+    yaml_loader = SafeLoader
+
     num_parameter_calc_procs: int = 1
     num_lookup_segments: Optional[int] = None
     parameter_storage: Storage = field(default_factory=StorageIntoTheVoid)
