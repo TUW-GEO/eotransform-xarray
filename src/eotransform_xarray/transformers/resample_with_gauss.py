@@ -11,7 +11,7 @@ from xarray import DataArray, Dataset
 from eotransform_xarray.storage.storage import Storage
 
 try:
-    from numba import njit, prange
+    from numba import njit, prange, guvectorize, float64, float32
     from pyresample import SwathDefinition, AreaDefinition
     from pyresample.kd_tree import get_neighbour_info
 except ImportError:
@@ -155,10 +155,13 @@ class ResampleWithGauss(TransformerOfDataArray):
             out_resampling = out_resampling.chunk({'neighbours': -1, 'cell': -1, 'y': rc[0], 'x': rc[1]})
         return ProjectionParameter(in_resampling, out_resampling)
 
-    @staticmethod
-    def _distances_to_gauss_weights(distances: DataArray, sigma: float) -> DataArray:
-        sig_sqrd = sigma ** 2
-        return np.exp(-distances ** 2 / sig_sqrd)
+    def _distances_to_gauss_weights(self, distances: DataArray, sigma: float) -> DataArray:
+        if self._proc_cfg.resampling_engine == 'numba':
+            distances.values = _distance_to_gauss_weight(distances.values, sigma ** 2)
+            return distances
+        else:
+            sig_sqrd = sigma ** 2
+            return np.exp(-distances ** 2 / sig_sqrd)
 
     def __call__(self, x: DataArray) -> DataArray:
         self._sanity_check_input(x)
@@ -185,6 +188,12 @@ class ResampleWithGauss(TransformerOfDataArray):
             raise ResampleWithGauss.MismatchError("Mismatch between resample transformation projection and input data:"
                                                   "\nvalid_indices' size doesn't match input data value length:\n"
                                                   f"{self._projection_params.in_resampling.sizes} != {x.shape}")
+
+
+@guvectorize([(float32[:], float32, float32[:]),
+              (float64[:], float64, float64[:])], '(),()->()', target='parallel', nopython=True)
+def _distance_to_gauss_weight(distance, sigma_sqrd, out):
+    out[0] = np.exp(-distance[0] ** 2 / sigma_sqrd)
 
 
 def _resample_dask(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:

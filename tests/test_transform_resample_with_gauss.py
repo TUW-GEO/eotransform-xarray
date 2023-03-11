@@ -27,8 +27,16 @@ def processing_config(request):
     engine = request.param
     loading = dict(scheduler='single-threaded') if engine == 'numba' else None
     return ProcessingConfig(resampling_engine=engine,
+                            num_lookup_segments=2,
                             load_in_resampling_params=loading,
                             load_out_resampling_params=loading)
+
+@pytest.fixture
+def engine_name(processing_config):
+    if processing_config.resampling_engine == 'numba':
+        return 'numba'
+    else:
+        return 'dask'
 
 
 @pytest.fixture
@@ -43,7 +51,7 @@ def verify_raster(verify_geo_tif_with_namer, tmp_path_factory):
     return _verify_fn
 
 
-def test_resample_raster_using_gauss_interpolation(verify_raster, processing_config):
+def test_resample_raster_using_gauss_interpolation(verify_raster, processing_config, engine_name):
     swath = make_swath([12.0, 16.0], [47.9, 45.2])
     in_data = make_swath_data_array([[[1, 2, 4, 8]], [[1, 2, 4, np.nan]]], swath)
 
@@ -53,7 +61,7 @@ def test_resample_raster_using_gauss_interpolation(verify_raster, processing_con
 
     gather_all_exceptions_and_throw([0, 1], lambda t: verify_raster(
         mask_and_scale(resampled[t]),
-        options=NamerFactory.with_parameters(t).for_file.with_extension('.tif')
+        options=NamerFactory.with_parameters(t, engine_name).for_file.with_extension('.tif')
     ))
 
 
