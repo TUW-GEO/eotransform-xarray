@@ -145,7 +145,7 @@ class ResampleWithGauss(TransformerOfDataArray):
                  empty_out_raster_factory: Optional[EmptyRasterFactory] = None):
         self._area_dst = area_dst
         self._proc_cfg = processing_config or ProcessingConfig()
-        self._empty_out_raster_factory = empty_out_raster_factory or make_empty_raster
+        self._empty_out_raster_factory = empty_out_raster_factory or make_full_nan_raster
         if self._proc_cfg.parameter_storage.exists():
             self._projection_params = ProjectionParameter.from_storage(self._proc_cfg.parameter_storage)
         else:
@@ -226,8 +226,8 @@ class ResampleWithGauss(TransformerOfDataArray):
                                                   f"{self._projection_params.in_resampling.sizes} != {x.shape}")
 
 
-def make_empty_raster(requested_shape: Tuple[int, ...], requested_dtype: DTypeLike) -> NDArray:
-    return np.empty(requested_shape, dtype=requested_dtype)
+def make_full_nan_raster(requested_shape: Tuple[int, ...], requested_dtype: DTypeLike) -> NDArray:
+    return np.full(requested_shape, np.nan, dtype=requested_dtype)
 
 
 @guvectorize([(float32[:], float32, float32[:]),
