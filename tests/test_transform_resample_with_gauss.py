@@ -166,17 +166,3 @@ def test_resample_raster_preserves_attributes(processing_config):
     resampled = resample(in_data)
 
     assert resampled.attrs == dict(some='attribute')
-
-
-def test_provide_custom_empty_output_raster_factory(processing_config, verify_raster, engine_type):
-    def make_float32_raster(requested_shape: Tuple[int, ...], requested_dtype: DTypeLike) -> NDArray:#
-        assert requested_dtype == np.float64
-        return np.empty(requested_shape, dtype=np.float32)
-
-    swath = make_swath([12.0, 16.0], [47.9, 45.2])
-    in_data = make_swath_data_array([[[1, 2, 4, np.nan]]], swath)
-
-    resample = ResampleWithGauss(swath, make_target_area(200, 200), sigma=2e5, neighbours=4, lookup_radius=1e6,
-                                 processing_config=processing_config, empty_out_raster_factory=make_float32_raster)
-    resampled = resample(in_data).load().squeeze(drop=True)
-    assert resampled.dtype == np.float32

@@ -141,13 +141,11 @@ class ResampleWithGauss(TransformerOfDataArray):
         ...
 
     def __init__(self, swath_src: Swath, area_dst: Area, sigma: float, neighbours: int, lookup_radius: float,
-                 processing_config: Optional[ProcessingConfig] = None,
-                 empty_out_raster_factory: Optional[EmptyRasterFactory] = None):
+                 processing_config: Optional[ProcessingConfig] = None):
         self._area_dst = area_dst
         self._proc_cfg = processing_config or ProcessingConfig()
         _fill_process_cfg_with_defaults(self._proc_cfg)
 
-        self._empty_out_raster_factory = empty_out_raster_factory or make_full_nan_raster
         if self._proc_cfg.parameter_storage.exists():
             self._projection_params = ProjectionParameter.from_storage(self._proc_cfg.parameter_storage)
         else:
@@ -201,23 +199,21 @@ class ResampleWithGauss(TransformerOfDataArray):
 
     def __call__(self, x: DataArray) -> DataArray:
         self._sanity_check_input(x)
-        in_valid = self._projection_params.in_resampling['mask'][:, 0].astype(bool)
+        in_valid = self._projection_params.in_resampling['mask'][:, 0]
         x = x[..., in_valid.values]
         indices = self._projection_params.out_resampling['indices']
         weights = self._projection_params.out_resampling['weights']
-        out_valid = self._projection_params.out_resampling['mask'][:, :, 0].astype(bool)
+        out_valid = self._projection_params.out_resampling['mask'][:, :, 0]
         if self._proc_cfg.resampling_engine.type == 'numba':
             resampled = DataArray(
-                _resample_numba(x.values, indices.values, weights.values, out_valid.values,
-                                self._empty_out_raster_factory),
+                _resample_numba(x.values, indices.values, weights.values, out_valid.values),
                 dims=x.dims[:2] + out_valid.dims,
                 coords={**{k: v for k, v in x.coords.items() if k in x.dims[:2]}, **out_valid.coords})
         else:
             resampled = xr.apply_ufunc(_resample_dask, x, indices, weights, out_valid,
                                        input_core_dims=[x.dims[-1:], ['neighbours'], ['neighbours'], []],
                                        output_dtypes=[x.dtype],
-                                       dask='parallelized', keep_attrs=True,
-                                       kwargs=dict(out_fac=self._empty_out_raster_factory))
+                                       dask='parallelized', keep_attrs=True)
         resampled.attrs = x.attrs
         return resampled
 
@@ -233,29 +229,23 @@ def _fill_process_cfg_with_defaults(config: ProcessingConfig):
     config.resampling_engine = config.resampling_engine or NumbaConfig()
 
 
-def make_full_nan_raster(requested_shape: Tuple[int, ...], requested_dtype: DTypeLike) -> NDArray:
-    return np.full(requested_shape, np.nan, dtype=requested_dtype)
-
-
 @guvectorize([(float32[:], float32, float32[:]),
               (float64[:], float64, float64[:])], '(),()->()', target='parallel', nopython=True)
 def _distance_to_gauss_weight(distance, sigma_sqrd, out):
     out[0] = np.exp(-distance[0] ** 2 / sigma_sqrd)
 
 
-def _resample_dask(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
-                   out_fac: EmptyRasterFactory) -> NDArray:
+def _resample_dask(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:
     in_data = in_data.squeeze((2, 3))
     times, parameters = in_data.shape[:2]
-    out = out_fac((times, parameters) + out_valid.shape, in_data.dtype)
+    out = np.empty((times, parameters) + out_valid.shape, dtype=in_data.dtype)
     _resample_to_single_threaded(in_data, indices, weights, out_valid, out)
     return out
 
 
-def _resample_numba(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
-                    out_fac: EmptyRasterFactory) -> NDArray:
+def _resample_numba(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:
     times, parameters = in_data.shape[:2]
-    out = out_fac((times, parameters) + out_valid.shape, in_data.dtype)
+    out = np.empty((times, parameters) + out_valid.shape, dtype=in_data.dtype)
     _resample_to_parallel(in_data, indices, weights, out_valid, out)
     return out
 
@@ -278,7 +268,7 @@ def _resample_to_operation(in_data, indices, out, out_valid, weights):
     for y in prange(out.shape[-2]):
         for x in prange(out.shape[-1]):
             if out_valid[y, x]:
-                for time in prange(times):
+                for time in range(times):
                     for parameter in range(parameters):
                         weighted_sum = 0
                         summed_weights = 0
@@ -291,3 +281,5 @@ def _resample_to_operation(in_data, indices, out, out_valid, weights):
                                     weighted_sum += w * sample
                                     summed_weights += w
                         out[time, parameter, y, x] = weighted_sum / summed_weights if summed_weights > 0 else np.nan
+            else:
+                out[:, :, y, x] = np.nan
