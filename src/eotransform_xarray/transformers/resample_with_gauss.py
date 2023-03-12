@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from typing import Tuple, Union, Literal, Mapping, Any, Optional, Dict, Callable
 
 import numpy as np
@@ -130,8 +130,8 @@ class ProcessingConfig(YAMLObject):
 
     num_parameter_calc_procs: int = 1
     num_lookup_segments: Optional[int] = None
-    parameter_storage: Storage = field(default_factory=StorageIntoTheVoid)
-    resampling_engine: Optional[Union[NumbaConfig, DaskConfig]] = field(default_factory=NumbaConfig)
+    parameter_storage: Optional[Storage] = None
+    resampling_engine: Optional[Union[NumbaConfig, DaskConfig]] = None
     load_in_resampling_params: Optional[Dict] = None
     load_out_resampling_params: Optional[Dict] = None
 
@@ -145,6 +145,8 @@ class ResampleWithGauss(TransformerOfDataArray):
                  empty_out_raster_factory: Optional[EmptyRasterFactory] = None):
         self._area_dst = area_dst
         self._proc_cfg = processing_config or ProcessingConfig()
+        _fill_process_cfg_with_defaults(self._proc_cfg)
+
         self._empty_out_raster_factory = empty_out_raster_factory or make_full_nan_raster
         if self._proc_cfg.parameter_storage.exists():
             self._projection_params = ProjectionParameter.from_storage(self._proc_cfg.parameter_storage)
@@ -224,6 +226,11 @@ class ResampleWithGauss(TransformerOfDataArray):
             raise ResampleWithGauss.MismatchError("Mismatch between resample transformation projection and input data:"
                                                   "\nvalid_indices' size doesn't match input data value length:\n"
                                                   f"{self._projection_params.in_resampling.sizes} != {x.shape}")
+
+
+def _fill_process_cfg_with_defaults(config: ProcessingConfig):
+    config.parameter_storage = config.parameter_storage or StorageIntoTheVoid()
+    config.resampling_engine = config.resampling_engine or NumbaConfig()
 
 
 def make_full_nan_raster(requested_shape: Tuple[int, ...], requested_dtype: DTypeLike) -> NDArray:
