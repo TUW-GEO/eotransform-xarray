@@ -206,7 +206,7 @@ class ResampleWithGauss(TransformerOfDataArray):
         indices = self._projection_params.out_resampling['indices']
         weights = self._projection_params.out_resampling['weights']
         out_valid = self._projection_params.out_resampling['mask'][:, :, 0].astype(bool)
-        if self._proc_cfg.resampling_engine == 'numba':
+        if self._proc_cfg.resampling_engine.type == 'numba':
             resampled = DataArray(
                 _resample_numba(x.values, indices.values, weights.values, out_valid.values,
                                 self._empty_out_raster_factory),
