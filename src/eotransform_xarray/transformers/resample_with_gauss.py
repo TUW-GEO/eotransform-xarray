@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, field
-from typing import Tuple, Union, Literal, Mapping, Any, Optional, Dict
+from typing import Tuple, Union, Literal, Mapping, Any, Optional, Dict, Callable
 
 import numpy as np
 import rioxarray  # noqa # pylint: disable=unused-import
@@ -23,6 +23,7 @@ except ImportError:
 from eotransform_xarray.transformers import TransformerOfDataArray
 
 EngineType = Literal['dask', 'numba']
+EmptyRasterFactory = Callable[[Tuple[int, ...], DTypeLike], NDArray]
 
 
 @dataclass
@@ -140,9 +141,11 @@ class ResampleWithGauss(TransformerOfDataArray):
         ...
 
     def __init__(self, swath_src: Swath, area_dst: Area, sigma: float, neighbours: int, lookup_radius: float,
-                 processing_config: Optional[ProcessingConfig] = None):
+                 processing_config: Optional[ProcessingConfig] = None,
+                 empty_out_raster_factory: Optional[EmptyRasterFactory] = None):
         self._area_dst = area_dst
         self._proc_cfg = processing_config or ProcessingConfig()
+        self._empty_out_raster_factory = empty_out_raster_factory or make_empty_raster
         if self._proc_cfg.parameter_storage.exists():
             self._projection_params = ProjectionParameter.from_storage(self._proc_cfg.parameter_storage)
         else:
@@ -203,14 +206,16 @@ class ResampleWithGauss(TransformerOfDataArray):
         out_valid = self._projection_params.out_resampling['mask'][:, :, 0].astype(bool)
         if self._proc_cfg.resampling_engine == 'numba':
             resampled = DataArray(
-                _resample_numba(x.values, indices.values, weights.values, out_valid.values),
+                _resample_numba(x.values, indices.values, weights.values, out_valid.values,
+                                self._empty_out_raster_factory),
                 dims=x.dims[:2] + out_valid.dims,
                 coords={**{k: v for k, v in x.coords.items() if k in x.dims[:2]}, **out_valid.coords})
         else:
             resampled = xr.apply_ufunc(_resample_dask, x, indices, weights, out_valid,
                                        input_core_dims=[x.dims[-1:], ['neighbours'], ['neighbours'], []],
                                        output_dtypes=[x.dtype],
-                                       dask='parallelized', keep_attrs=True)
+                                       dask='parallelized', keep_attrs=True,
+                                       kwargs=dict(out_fac=self._empty_out_raster_factory))
         resampled.attrs = x.attrs
         return resampled
 
@@ -221,23 +226,29 @@ class ResampleWithGauss(TransformerOfDataArray):
                                                   f"{self._projection_params.in_resampling.sizes} != {x.shape}")
 
 
+def make_empty_raster(requested_shape: Tuple[int, ...], requested_dtype: DTypeLike) -> NDArray:
+    return np.empty(requested_shape, dtype=requested_dtype)
+
+
 @guvectorize([(float32[:], float32, float32[:]),
               (float64[:], float64, float64[:])], '(),()->()', target='parallel', nopython=True)
 def _distance_to_gauss_weight(distance, sigma_sqrd, out):
     out[0] = np.exp(-distance[0] ** 2 / sigma_sqrd)
 
 
-def _resample_dask(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:
+def _resample_dask(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
+                   out_fac: EmptyRasterFactory) -> NDArray:
     in_data = in_data.squeeze((2, 3))
     times, parameters = in_data.shape[:2]
-    out = np.full((times, parameters) + out_valid.shape, np.nan, dtype=in_data.dtype)
+    out = out_fac((times, parameters) + out_valid.shape, in_data.dtype)
     _resample_to_single_threaded(in_data, indices, weights, out_valid, out)
     return out
 
 
-def _resample_numba(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray) -> NDArray:
+def _resample_numba(in_data: NDArray, indices: NDArray, weights: NDArray, out_valid: NDArray,
+                    out_fac: EmptyRasterFactory) -> NDArray:
     times, parameters = in_data.shape[:2]
-    out = np.full((times, parameters) + out_valid.shape, np.nan, dtype=in_data.dtype)
+    out = out_fac((times, parameters) + out_valid.shape, in_data.dtype)
     _resample_to_parallel(in_data, indices, weights, out_valid, out)
     return out
 
