@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Any, Dict, Optional, Sequence, Set
+from typing import Callable, Any, Dict, Optional, Set
 
 import rasterio
 import rioxarray
@@ -8,8 +8,9 @@ from eotransform.collection_transformation import transform_all_dict_elems
 from eotransform.protocol.transformer import PredicatedTransformer
 from xarray import DataArray
 
+from eotransform_xarray.functional.decode import SCALE_FACTOR_KEY
+
 LEGACY_SCALE_FACTOR_KEYS = {"scale_factor", "Scale_factor"}
-SCALE_FACTOR_KEY = "scale_factor"
 Parser = Callable[[str], Any]
 
 
