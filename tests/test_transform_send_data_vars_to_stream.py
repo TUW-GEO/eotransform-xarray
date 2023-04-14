@@ -1,16 +1,17 @@
 import pytest
+from eotransform.protocol.stream import StreamIn
 from xarray import Dataset
 
-from eotransform_xarray.transformers.send_dataset_to_stream import StreamIn, SendDataVarsToStream
+from eotransform_xarray.transformers.send_dataset_to_stream import SendDataVarsToStream, DataVars
 from factories import make_raster
 
 
-class StreamInSpy(StreamIn):
+class StreamInSpy(StreamIn[DataVars]):
     def __init__(self):
         self.received = None
 
-    def send(self, *args):
-        self.received = args
+    def send(self, data_vars: DataVars) -> None:
+        self.received = data_vars
 
 
 @pytest.fixture
