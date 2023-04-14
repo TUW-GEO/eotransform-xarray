@@ -17,7 +17,7 @@ def identity(a):
     return a
 
 
-class SendToStream(TransformerOfDataset):
+class SendDatasetToStream(TransformerOfDataset):
     def __init__(self, stream: StreamIn, *data_vars_to_send, preprocess: Optional[ProcessFn] = None):
         self._stream = stream
         self._data_vars_to_send = data_vars_to_send
