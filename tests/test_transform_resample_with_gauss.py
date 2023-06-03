@@ -1,25 +1,20 @@
 import shutil
 from datetime import datetime
-from typing import Any, Sequence, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pytest
-from affine import Affine
 from approval_utilities.utilities.exceptions.exception_collector import gather_all_exceptions_and_throw
 from approvaltests import Options
 from approvaltests.namer import NamerFactory
-from numpy.typing import ArrayLike, NDArray, DTypeLike
 from pytest_approvaltests_geo import GeoOptions
 from xarray import DataArray
 
 from eotransform_xarray.storage.storage_using_zarr import StorageUsingZarr
-from eotransform_xarray.transformers.resample_with_gauss import Swath, Extent, Area, ResampleWithGauss, \
+from eotransform_xarray.transformers.resample_with_gauss import ResampleWithGauss, \
     ProjectionParameter, ProcessingConfig, DaskConfig, NumbaConfig
+from factories import make_swath, make_target_area, make_swath_data_array
 from helpers.assertions import assert_data_array_eq
-
-DEFAULT_TEST_EXTENT = Extent(4800000, 1200000, 5400000, 1800000)
-DEFAULT_TEST_TRANSFORM = Affine.from_gdal(4800000, 3000, 0, 1800000, 0, 3000)
-DEFAULT_TEST_PROJECTION = "+proj=aeqd +lat_0=53 +lon_0=24 +x_0=5837287.81977 +y_0=2121415.69617 +datum=WGS84 +units=m +no_defs"
 
 
 @pytest.fixture(params=[NumbaConfig(), DaskConfig((200, 200))])
@@ -61,28 +56,6 @@ def test_resample_raster_using_gauss_interpolation(verify_raster, processing_con
         mask_and_scale(resampled[t]),
         options=NamerFactory.with_parameters(t, engine_type).for_file.with_extension('.tif')
     ))
-
-
-def make_swath(lons: ArrayLike, lats: ArrayLike) -> Swath:
-    lons, lats = np.meshgrid(lons, lats)
-    lons = lons.reshape(1, -1)
-    lats = lats.reshape(1, -1)
-    return Swath(lons, lats)
-
-
-def make_target_area(columns: int, rows: int) -> Area:
-    return Area("test_area", DEFAULT_TEST_PROJECTION, columns, rows, DEFAULT_TEST_EXTENT, DEFAULT_TEST_TRANSFORM)
-
-
-def make_swath_data_array(values: Any, swath: Swath, ts: Optional[Sequence[datetime]] = None,
-                          parameters: Optional[Sequence[str]] = None) -> DataArray:
-    values = np.array(values)
-    coords = dict(time=ts or np.arange(0, values.shape[0]),
-                  lon=(('time', 'parameter', 'value'), np.tile(swath.lons, (*values.shape[:-1], 1))),
-                  lat=(('time', 'parameter', 'value'), np.tile(swath.lats, (*values.shape[:-1], 1))))
-    if parameters:
-        coords['parameter'] = parameters
-    return DataArray(values, dims=['time', 'parameter', 'value'], coords=coords)
 
 
 def mask_and_scale(a: DataArray) -> DataArray:
