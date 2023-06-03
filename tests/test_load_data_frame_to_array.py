@@ -24,8 +24,8 @@ def test_loads_data_frame_according_to_index(tmp_path):
             datetime_1=DataArray(times, dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
             filepath=DataArray(files, dims=['datetime_1'], attrs={CONCATED_ATTRS_KEY: [{}, {}]}),
             band=[1],
-            y=np.arange(8, dtype=np.float),
-            x=np.arange(8, dtype=np.float),
+            y=np.arange(8, dtype=np.float64),
+            x=np.arange(8, dtype=np.float64),
             spatial_ref=DataArray(0, attrs=dict(GeoTransform="-0.5 1.0 0.0 -0.5 0.0 1.0"))
         ),
         attrs={CONCATED_ATTRS_KEY: [
