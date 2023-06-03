@@ -5,7 +5,7 @@
 
 The eotransform-xarray package provides common transformations on raster data represented as [xarray](https://docs.xarray.dev/en/stable/) data structures, following the Transformer protocol of [eotransform](https://github.com/TUW-GEO/eotransform).
 This makes them easy to mix and match, and you can quickly chain processing pipelines, using other [eotransform](https://github.com/TUW-GEO/eotransform) protocols.
-Also benefit from streaming function
+Additionally, processing pipelines constructed from these Transformers, can be automatically applied to the `streamed_process` function from [eotransform](https://github.com/TUW-GEO/eotransform), to benefit from I/O hiding.
 
 ## Getting Started
 ### Installation
@@ -29,7 +29,7 @@ with ThreadPoolExecutor(max_workers=3) as ex:
 <sup><a href='/tests/test_doc_examples.py#L32-L39' title='Snippet source file'>snippet source</a> | <a href='#snippet-streamed_resample_and_mask' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Note, that this example uses [eotransform](https://github.com/TUW-GEO/eotransform)'s `stream` function to hide the I/O operations, using the compute resources more effectively.
+Note, that this example uses [eotransform](https://github.com/TUW-GEO/eotransform)'s `streamed_process` function to hide the I/O operations, using the compute resources more effectively.
 
 ### Dependencies:
 eotransform-xarray requires Python 3.8 and has these dependencies:

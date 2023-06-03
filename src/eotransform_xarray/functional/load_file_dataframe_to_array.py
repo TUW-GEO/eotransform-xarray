@@ -50,7 +50,7 @@ def _read_multi_band_geo_tiffs(tiffs: Sequence[Path], index: Any, index_name: st
     arrays = [load_tif(t, tags_parser, rioxarray_kwargs, allow_legacy_scaling)
               for t in tiffs]
     array = xr.concat(arrays, dim='band', combine_attrs=_concat_attrs_with_key(BAND_ATTRS_KEY))
-    tiff_array = np.empty((1,), dtype=np.object)
+    tiff_array = np.empty((1,), dtype=object)
     tiff_array[0] = tiffs
     return array.expand_dims(index_name).assign_coords(
         {'band': [i for i in range(len(arrays))], index_name: [index], "filepaths": (index_name, tiff_array)})
