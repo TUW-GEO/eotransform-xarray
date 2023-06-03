@@ -115,7 +115,7 @@ def test_multi_band_from_multiple_geo_tiffs(tmp_path):
 
 
 def make_file_list_array(geo_tiffs):
-    fl_array = np.empty(2, dtype=np.object)
+    fl_array = np.empty(2, dtype=object)
     file_lists = geo_tiffs['filepaths'].tolist()
     fl_array[0] = file_lists[0]
     fl_array[1] = file_lists[1]
