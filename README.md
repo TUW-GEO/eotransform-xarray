@@ -31,6 +31,11 @@ with ThreadPoolExecutor(max_workers=3) as ex:
 
 Note, that this example uses [eotransform's streamed_process](https://eotransform.readthedocs.io/en/latest/_autosummary/eotransform.streamed_process.streamed_process.html#eotransform.streamed_process.streamed_process) function to hide the I/O operations, using the compute resources more effectively.
 
+## Support & Documentation
+
+- [Documentation](https://eotransform-xarray.readthedocs.io/)
+- GitHub: [https://github.com/TUW-GEO/eotransform-xarray](https://github.com/TUW-GEO/eotransform-xarray)
+
 ### Dependencies:
 eotransform-xarray requires Python 3.8 and has these dependencies:
 
