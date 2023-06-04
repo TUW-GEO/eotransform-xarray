@@ -7,3 +7,9 @@ rioxarray
 numpy
 affine
 more_itertools
+dask
+scikit-image
+numba
+pyresample
+pyyaml
+zarr
