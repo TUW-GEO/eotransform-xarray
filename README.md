@@ -1,4 +1,4 @@
-![Coverage badge](https://raw.githubusercontent.com/TUW-GEO/eotransform-xarray/python-coverage-comment-action-data/badge.svg)
+![Coverage badge](https://raw.githubusercontent.com/TUW-GEO/eotransform-xarray/python-coverage-comment-action-data/badge.svg) [![Documentation Status](https://readthedocs.org/projects/eotransform-xarray/badge/?version=latest)](https://eotransform-xarray.readthedocs.io/en/latest/?badge=latest)
 # eotransform-xarray
 
 ## What can I use eotransform-xarray for?

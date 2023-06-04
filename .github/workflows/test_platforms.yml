@@ -24,4 +24,4 @@ jobs:
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install -e .[test]
       - name: Test
-        run: pytest --verbose --color=yes --cov=eotransform_xarray --cov-report term-missing
+        run: pytest --verbose --ignore docs --color=yes --cov=eotransform_xarray --cov-report term-missing

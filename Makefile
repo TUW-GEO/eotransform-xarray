@@ -37,7 +37,7 @@ setup: .install.done
 	touch .install.test.done
 
 test: .install.test.done
-	pytest --verbose --color=yes --cov=eotransform_xarray --cov-report term-missing --doctest-modules
+	pytest --verbose --ignore docs --color=yes --cov=eotransform_xarray --cov-report term-missing --doctest-modules
 
 version:
 	echo "__version__ = \"$(shell git describe --always --tags --abbrev=0)\"" > src/eotransform_xarray/_version.py
