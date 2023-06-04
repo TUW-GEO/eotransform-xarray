@@ -2,3 +2,8 @@ sphinx
 sphinx-rtd-theme
 sphinx-autodoc-typehints
 eotransform
+xarray
+rioxarray
+numpy
+affine
+more_itertools
