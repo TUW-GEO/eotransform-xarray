@@ -4,12 +4,14 @@ from typing import Optional
 
 import numpy as np
 import pytest
+import rioxarray
 from approval_utilities.utilities.exceptions.exception_collector import gather_all_exceptions_and_throw
 from approvaltests import Options
 from approvaltests.namer import NamerFactory
 from pytest_approvaltests_geo import GeoOptions
 from xarray import DataArray
 
+from eotransform_xarray.geometry.pixel_transforms import pixel_centers_for_geotransform_extent
 from eotransform_xarray.storage.storage_using_zarr import StorageUsingZarr
 from eotransform_xarray.transformers.resample_with_gauss import ResampleWithGauss, \
     ProjectionParameter, ProcessingConfig, DaskConfig, NumbaConfig
@@ -128,6 +130,27 @@ def test_resample_raster_preserves_coordinates(processing_config):
 def assert_ts_eq(actual, expected):
     np.testing.assert_array_equal(np.asarray(actual, dtype='datetime64'), np.array(expected, dtype='datetime64'))
 
+
+def test_resampled_raster_assigns_correct_spatial_coordinates(verify_raster, processing_config, engine_type, tmp_path):
+    swath = make_swath([12.0, 16.0], [47.9, 45.2])
+    in_data = make_swath_data_array([[[1, 2, 4, 8]], [[1, 2, 4, np.nan]]], swath)
+
+    area = make_target_area(200, 200)
+    resample = ResampleWithGauss(swath, area, sigma=2e5, neighbours=4, lookup_radius=1e6,
+                                 processing_config=processing_config)
+    resampled = resample(in_data)
+    resampled[0, 0].rio.to_raster(tmp_path / "resampled.tif")
+    encoded_decoded = rioxarray.open_rasterio(tmp_path / "resampled.tif", parse_coordinates=True)
+
+    y, x = pixel_centers_for_geotransform_extent(area.transform, 200, 200)
+    assert_array_eq(resampled.y, y)
+    assert_array_eq(resampled.x, x)
+    assert_spatial_coords_eq(resampled, encoded_decoded)
+
+
+def assert_spatial_coords_eq(actual, expected):
+    assert_array_eq(actual.y, expected.y)
+    assert_array_eq(actual.x, expected.x)
 
 def test_resample_raster_preserves_attributes(processing_config):
     swath = make_swath([12.0, 16.0], [47.9, 45.2])

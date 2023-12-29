@@ -10,6 +10,7 @@ from numpy.typing import NDArray, DTypeLike
 from xarray import DataArray, Dataset
 from yaml import YAMLObject, SafeLoader
 
+from eotransform_xarray.geometry.pixel_transforms import pixel_centers_for_geotransform_extent
 from eotransform_xarray.storage.storage import Storage
 
 try:
@@ -181,6 +182,9 @@ class ResampleWithGauss(TransformerOfDataArray):
                                   'weights': (('y', 'x', 'neighbours'), distances),
                                   'mask': (('y', 'x', 'cell'), out_mask)}) \
             .rio.write_crs(area.projection).rio.write_transform(area.transform)
+
+        y, x = pixel_centers_for_geotransform_extent(area.transform, area.columns, area.rows)
+        out_resampling = out_resampling.assign_coords({'y': ('y', y), 'x': ('x', x)})
 
         if self._proc_cfg.resampling_engine.type == 'numba':
             out_resampling = out_resampling.chunk({'neighbours': -1, 'cell': -1, 'y': -1, 'x': -1})
