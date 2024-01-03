@@ -49,7 +49,7 @@ numpy
 affine
 more_itertools
 ```
-<sup><a href='/setup.cfg#L29-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-dependencies' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/setup.cfg#L30-L37' title='Snippet source file'>snippet source</a> | <a href='#snippet-dependencies' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Citation
