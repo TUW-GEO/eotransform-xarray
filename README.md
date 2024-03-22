@@ -1,4 +1,4 @@
-![Coverage badge](https://raw.githubusercontent.com/TUW-GEO/eotransform-xarray/python-coverage-comment-action-data/badge.svg) [![Documentation Status](https://readthedocs.org/projects/eotransform-xarray/badge/?version=latest)](https://eotransform-xarray.readthedocs.io/en/latest/?badge=latest) [![DOI](https://zenodo.org/badge/542093442.svg)](https://zenodo.org/badge/latestdoi/542093442)
+[![Test with coverage](https://github.com/TUW-GEO/eotransform-xarray/actions/workflows/test_coverage.yml/badge.svg)](https://github.com/TUW-GEO/eotransform-xarray/actions/workflows/test_coverage.yml) [![DOI](https://zenodo.org/badge/542093442.svg)](https://zenodo.org/badge/latestdoi/542093442)
 # eotransform-xarray
 
 ## What can I use eotransform-xarray for?
